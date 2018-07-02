@@ -62,7 +62,14 @@ public:
         first_time_(true) {
 
 		iiwa_initial_joint_positions_.joint_names.resize(7);
-		iiwa_initial_joint_positions_.joint_names = RobotInterface::getJointNames();
+		//iwa_initial_joint_positions_.joint_names = RobotInterface::getJointNames();
+    iiwa_initial_joint_positions_.joint_names[0] = "iiwa_joint_1"; 
+    iiwa_initial_joint_positions_.joint_names[1] = "iiwa_joint_2";
+    iiwa_initial_joint_positions_.joint_names[2] = "iiwa_joint_3";
+    iiwa_initial_joint_positions_.joint_names[3] = "iiwa_joint_4";
+    iiwa_initial_joint_positions_.joint_names[4] = "iiwa_joint_5";
+    iiwa_initial_joint_positions_.joint_names[5] = "iiwa_joint_6";
+    iiwa_initial_joint_positions_.joint_names[6] = "iiwa_joint_7";
 		iiwa_initial_joint_positions_.points.resize(1);
 		iiwa_initial_joint_positions_.points[0].positions.resize(7);
     // Anthropomorphic
@@ -234,8 +241,9 @@ private:
       }  
 
       tf::Quaternion relative_quaternion = next_quaternion * calib_quaternion_;
-      tf::Quaternion relative_quaternion_mirror(-relative_quaternion.getX(), relative_quaternion.getY(), -relative_quaternion.getZ(), relative_quaternion.getW());
+      //tf::Quaternion relative_quaternion_mirror(-relative_quaternion.getX(), relative_quaternion.getY(), -relative_quaternion.getZ(), relative_quaternion.getW());
 
+      //Scaling
       if ( (scale_rot_x_ != 1.0) || (scale_rot_y_ != 1.0) || (scale_rot_z_ != 1.0) ) {
         tf::Matrix3x3 rotMatrix(relative_quaternion);
         double euler_x, euler_y, euler_z;
@@ -254,21 +262,23 @@ private:
 //        relative_quaternion.setRPY(roll, pitch, yaw);
       }
 
-      // relative_quaternion = relative_quaternion * base_quaternion;
-      relative_quaternion_mirror = relative_quaternion_mirror * base_quaternion;
+       relative_quaternion = relative_quaternion * base_quaternion;
+      //relative_quaternion_mirror = relative_quaternion_mirror * base_quaternion;
 
       geometry_msgs::Pose target_pose = base_pose_;
       target_pose.position.x += (x - mcs_x_init_);
-      target_pose.position.y += -1.0 * (y - mcs_y_init_);
+      target_pose.position.y += 1.0 * (y - mcs_y_init_); 
       target_pose.position.z += (z - mcs_z_init_);
-      // target_pose.orientation.x = relative_quaternion.getX();
-      // target_pose.orientation.y = relative_quaternion.getY();
-      // target_pose.orientation.z = relative_quaternion.getZ();
-      // target_pose.orientation.w = relative_quaternion.getW();
+      target_pose.orientation.x = relative_quaternion.getX();
+      target_pose.orientation.y = relative_quaternion.getY();
+      target_pose.orientation.z = relative_quaternion.getZ();
+      target_pose.orientation.w = relative_quaternion.getW();
+      /*
       target_pose.orientation.x = relative_quaternion_mirror.getX();
       target_pose.orientation.y = relative_quaternion_mirror.getY();
       target_pose.orientation.z = relative_quaternion_mirror.getZ();
       target_pose.orientation.w = relative_quaternion_mirror.getW();
+      */
       publishPoseGoal(target_pose, 0.01);
 
 
