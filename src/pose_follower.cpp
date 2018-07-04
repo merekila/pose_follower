@@ -81,7 +81,6 @@ public:
 		iiwa_initial_joint_positions_.points[0].positions[5] = 3.1416/180.0 * (-1.0 * -4.63 + 90.0); 
 		iiwa_initial_joint_positions_.points[0].positions[6] = 3.1416/180.0 * 0.0;
 
-    /*
     // Same pose as anthropomorphic but after first jump of Manipulation1
     // iiwa_initial_joint_positions_.points[0].positions[0] = 0.8746766387596265;
     // iiwa_initial_joint_positions_.points[0].positions[1] = 0.31935906348334875;
@@ -108,7 +107,6 @@ public:
     // iiwa_initial_joint_positions_.points[0].positions[4] = 0.131128; 
     // iiwa_initial_joint_positions_.points[0].positions[5] = 0.912577; 
     // iiwa_initial_joint_positions_.points[0].positions[6] = 0.758723;
-    */
 
     // operator_frame_.setOrigin( tf::Vector3(0.0, 0.0, 0.0) );
     // tf::Quaternion operator_orientation;
@@ -123,6 +121,10 @@ public:
   void moveToBasePose() {
     planAndMove(base_pose_, std::string("base pose"));
   }
+
+  void moveToBasePoseZero() {
+    planAndMove(base_pose_, std::string("base pose"));
+  }  
 
   void registerSubscriberRelative(const std::string& topic) {
     pose_subscriber_ = node_handle_->subscribe(topic, 1, &PoseFollower::poseCallbackRelative, this);
@@ -143,6 +145,10 @@ public:
 	void moveToInitialJointPositions() {
 		planAndMove(iiwa_initial_joint_positions_.points[0].positions, std::string("initial joint positions"));
 	}
+
+	void moveToInitialJointPositionsZero() {
+		planAndMove(iiwa_initial_joint_positions_.points[0].positions, std::string("initial joint positions"), 0);
+	}  
 
 	void setBasePoseToCurrent() {
 		base_pose_ = getPose(std::string("iiwa_s_model_finger_1")).pose; // formerly: "iiwa_link_ee"
@@ -183,6 +189,7 @@ private:
 
 
   void poseCallbackRelative(const geometry_msgs::PoseStamped::ConstPtr& msg) {
+
       geometry_msgs::PoseStamped pose_transformed;
 
       pose_transformed = transformOperatorPose(*msg);
@@ -203,7 +210,7 @@ private:
       }  
 
       tf::Quaternion relative_quaternion = next_quaternion * calib_quaternion_;
-      
+
       //Scaling
       if ( (scale_rot_x_ != 1.0) || (scale_rot_y_ != 1.0) || (scale_rot_z_ != 1.0) ) {
         tf::Matrix3x3 rotMatrix(relative_quaternion);
@@ -216,7 +223,7 @@ private:
         rotMatrix.getRotation(relative_quaternion);
       }
 
-       relative_quaternion = relative_quaternion * base_quaternion;
+      relative_quaternion = relative_quaternion * base_quaternion;
 
       geometry_msgs::Pose target_pose = base_pose_;
       target_pose.position.x += (x - mcs_x_init_);
@@ -233,10 +240,6 @@ private:
       target_pose.orientation.w = relative_quaternion_mirror.getW();
       */
       publishPoseGoal(target_pose, 0.01);
-
-
-
-
 
   }
 
@@ -267,9 +270,14 @@ int main(int argc, char **argv)
 
   pose_follower::PoseFollower pose_follower(&node_handle, "manipulator", "world", scale_x, scale_y, scale_z, scale_rot_x, scale_rot_y, scale_rot_z, 2);
 	
-	// use when initial joint positions are given
-	//pose_follower.moveToInitialJointPositions();
+//  pose_follower.getOperatorTransform();
 
+	// use when base pose is given
+//  pose_follower.moveToBasePose();
+
+	// use when initial joint positions are given
+	pose_follower.moveToInitialJointPositions();
+//	pose_follower.waitForApproval();
 	pose_follower.setBasePoseToCurrent();
 
   pose_follower.waitForApproval();
@@ -287,6 +295,7 @@ int main(int argc, char **argv)
   ros::Rate rate(100);
   while(ros::ok()) {
     //transform_broadcaster.sendTransform(tf::StampedTransform(operator_frame, ros::Time::now(), "world", "operator"));
+    // ROS_INFO_NAMED("pose_follower", "Execution of while loop!");
     rate.sleep();
   }
   ros::shutdown();
