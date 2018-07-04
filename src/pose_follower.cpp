@@ -268,9 +268,8 @@ int main(int argc, char **argv)
   pose_follower::PoseFollower pose_follower(&node_handle, "manipulator", "world", scale_x, scale_y, scale_z, scale_rot_x, scale_rot_y, scale_rot_z, 2);
 	
 	// use when initial joint positions are given
-	pose_follower.moveToInitialJointPositions();
+	//pose_follower.moveToInitialJointPositions();
 
-  // pose_follower.waitForApproval();
 	pose_follower.setBasePoseToCurrent();
 
   pose_follower.waitForApproval();
