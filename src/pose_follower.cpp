@@ -36,6 +36,10 @@
 #include <iimoveit/robot_interface.h>
 #include <tf/LinearMath/Quaternion.h>
 #include <tf/transform_broadcaster.h>
+#include <cstdi
+
+//#include <conio.h>  //for function getch()
+//#include <stdio.    //for function getch()
 //#include <tf2_ros/static_transform_broadcaster.h>
 //#include <geometry_msgs/TransformStamped.h>
 
@@ -122,10 +126,6 @@ public:
     planAndMove(base_pose_, std::string("base pose"));
   }
 
-  void moveToBasePoseZero() {
-    planAndMove(base_pose_, std::string("base pose"));
-  }  
-
   void registerSubscriberRelative(const std::string& topic) {
     pose_subscriber_ = node_handle_->subscribe(topic, 1, &PoseFollower::poseCallbackRelative, this);
   }
@@ -145,10 +145,6 @@ public:
 	void moveToInitialJointPositions() {
 		planAndMove(iiwa_initial_joint_positions_.points[0].positions, std::string("initial joint positions"));
 	}
-
-	void moveToInitialJointPositionsZero() {
-		planAndMove(iiwa_initial_joint_positions_.points[0].positions, std::string("initial joint positions"), 0);
-	}  
 
 	void setBasePoseToCurrent() {
 		base_pose_ = getPose(std::string("iiwa_s_model_finger_1")).pose; // formerly: "iiwa_link_ee"
@@ -277,7 +273,7 @@ int main(int argc, char **argv)
 
 	// use when initial joint positions are given
 	pose_follower.moveToInitialJointPositions();
-//	pose_follower.waitForApproval();
+
 	pose_follower.setBasePoseToCurrent();
 
   pose_follower.waitForApproval();
@@ -293,10 +289,35 @@ int main(int argc, char **argv)
   }
 
   ros::Rate rate(100);
-  while(ros::ok()) {
-    //transform_broadcaster.sendTransform(tf::StampedTransform(operator_frame, ros::Time::now(), "world", "operator"));
-    // ROS_INFO_NAMED("pose_follower", "Execution of while loop!");
-    rate.sleep();
+  
+  char pressedKey = getch();
+
+  if(pressedKey == 'c'){
+    while(ros::ok()){
+      target_pose.getPose();
+      publishPoseGoal(target_pose, 1.0)
+      if getch() !== 'c'){
+        setBasePoseToCurrent();
+        break;
+      }
+    }
+  }
+  else{
+      if(udp_input) {
+        pose_follower.registerSubscriberRelative(std::string("/poseFromUDP/PoseStamped"));
+        ROS_INFO_NAMED("pose_follower", "Subscribed to pose from UDP!");
+      }
+      else {
+        pose_follower.registerSubscriberRelative(std::string("/poseFromFile/PoseStampedRelative"));
+        //pose_follower.registerSubscriberAbsolute(std::string("/poseFromFile/PoseStampedAbsolute"));
+        ROS_INFO_NAMED("pose_follower", "Subscribed to pose from file!");
+      }
+
+    while(ros::ok()) {
+      //transform_broadcaster.sendTransform(tf::StampedTransform(operator_frame, ros::Time::now(), "world", "operator"));
+      // ROS_INFO_NAMED("pose_follower", "Execution of while loop!");
+      rate.sleep();
+    }
   }
   ros::shutdown();
   return 0;
