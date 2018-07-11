@@ -100,38 +100,6 @@ public:
 		iiwa_initial_joint_positions_.points[0].positions[5] = 3.1416/180.0 * (-1.0 * -4.63 + 90.0); 
 		iiwa_initial_joint_positions_.points[0].positions[6] = 3.1416/180.0 * 0.0;
 
-    // Same pose as anthropomorphic but after first jump of Manipulation1
-    // iiwa_initial_joint_positions_.points[0].positions[0] = 0.8746766387596265;
-    // iiwa_initial_joint_positions_.points[0].positions[1] = 0.31935906348334875;
-    // iiwa_initial_joint_positions_.points[0].positions[2] = -0.1436417604031366;
-    // iiwa_initial_joint_positions_.points[0].positions[3] = -1.0034094314075555;
-    // iiwa_initial_joint_positions_.points[0].positions[4] = -1.2585557146177253; 
-    // iiwa_initial_joint_positions_.points[0].positions[5] = 0.9877990247741666; 
-    // iiwa_initial_joint_positions_.points[0].positions[6] = 0.7955422602614934;
-
-    // Hanoi
-    // iiwa_initial_joint_positions_.points[0].positions[0] = 3.1416/180.0 * -79.0;
-    // iiwa_initial_joint_positions_.points[0].positions[1] = 3.1416/180.0 * -44.7;
-    // iiwa_initial_joint_positions_.points[0].positions[2] = 3.1416/180.0 * 136.4;
-    // iiwa_initial_joint_positions_.points[0].positions[3] = 3.1416/180.0 * -57.3;
-    // iiwa_initial_joint_positions_.points[0].positions[4] = 3.1416/180.0 * -65.3; 
-    // iiwa_initial_joint_positions_.points[0].positions[5] = 3.1416/180.0 * 67.0; 
-    // iiwa_initial_joint_positions_.points[0].positions[6] = 3.1416/180.0 * 73.9;  
-
-    // Hanoi pose after first jump of Manipulation1
-    // iiwa_initial_joint_positions_.points[0].positions[0] = -1.22537;
-    // iiwa_initial_joint_positions_.points[0].positions[1] = -1.26194;
-    // iiwa_initial_joint_positions_.points[0].positions[2] = 1.29466;
-    // iiwa_initial_joint_positions_.points[0].positions[3] = -1.0002;
-    // iiwa_initial_joint_positions_.points[0].positions[4] = 0.131128; 
-    // iiwa_initial_joint_positions_.points[0].positions[5] = 0.912577; 
-    // iiwa_initial_joint_positions_.points[0].positions[6] = 0.758723;
-
-    // operator_frame_.setOrigin( tf::Vector3(0.0, 0.0, 0.0) );
-    // tf::Quaternion operator_orientation;
-    // operator_orientation.setRPY(0.0, 0.0, 3.1416/180.0 * 0.0);
-    // operator_frame_.setRotation(operator_orientation);
-    // transform_broadcaster_.sendTransform(tf::StampedTransform(operator_frame_, ros::Time::now(), "world", "operator"));
 
     operator_rotation_ = tf::createQuaternionFromRPY(0.0, 0.0, 0.0);
 
