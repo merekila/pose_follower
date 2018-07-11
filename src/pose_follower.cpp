@@ -36,13 +36,31 @@
 #include <iimoveit/robot_interface.h>
 #include <tf/LinearMath/Quaternion.h>
 #include <tf/transform_broadcaster.h>
-#include <cstdio.h>
+#include <stdio.h>
+#include "std_msgs/Bool.h"
+#include <keyboard/Key.h>
 
+std_msgs::Bool declutch;
+bool declutch_uplatch;
+bool declutch_downlatch;
 
+/*
 bool declutch_state_bool;
 bool declutch_uplatch_bool;
 bool declutch_downlatch_bool;
+*/
 
+void chatterCallbackUp(const keyboard::Key& msg)
+{
+    declutch.data = false;
+}
+
+void chatterCallbackDown(const keyboard::Key& msg)
+{
+    declutch.data = true;
+}
+
+/*
 void set_declutch_state(const std_msgs::Bool boolean){
     declutch_state_bool = boolean.data;
 }
@@ -54,6 +72,7 @@ void set_declutch_uplatch(const std_msgs::Bool boolean){
 void set_declutch_downlatch(const std_msgs::Bool boolean){
     declutch_downlatch_bool = boolean.data;
 }
+*/
 
 geometry_msgs::PoseStamped declutch_pose;
 
@@ -219,13 +238,13 @@ private:
       target_pose.orientation.w = relative_quaternion_mirror.getW();
       */
 
-      if(declutch_downlatch_bool) {
+      if(declutch_downlatch) {
         setBasePoseToCurrent();
         first_time_ = true;
       }
-      if(declutch_uplatch_bool) declutch_pose.pose = getPose(std::string("iiwa_s_model_finger_1")).pose;
-      if(declutch_state_bool) publishPoseGoal(declutch_pose, 0.01);
-      if(!declutch_state_bool) publishPoseGoal(target_pose, 0.01);;
+      if(declutch_uplatch) declutch_pose.pose = getPose(std::string("iiwa_s_model_finger_1")).pose;
+      if(declutch.data) publishPoseGoal(declutch_pose, 0.01);
+      if(!declutch.data) publishPoseGoal(target_pose, 0.01);;
 
   }
 
@@ -243,14 +262,15 @@ int main(int argc, char **argv)
 
   //-----------------------------------------------------------
   //code for declutch
-
+/*
   ros::Subscriber declutch_state = node_handle.subscribe("/declutch_state", 10, &set_declutch_state);
   ros::Subscriber declutch_uplatch = node_handle.subscribe("/declutch_uplatch", 10, &set_declutch_uplatch);
   ros::Subscriber declutch_downlatch = node_handle.subscribe("/declutch_downlatch", 10, &set_declutch_downlatch);
-
+*/
   //-------------------------------------------------------------
 
-
+    ros::Subscriber keyup_sub = node_handle.subscribe("/keyboard/keyup", 10, &chatterCallbackUp);
+    ros::Subscriber keydown_sub = node_handle.subscribe("/keyboard/keydown", 10, &chatterCallbackDown);
 
   spinner.start();
 	
@@ -290,11 +310,33 @@ int main(int argc, char **argv)
     ROS_INFO_NAMED("pose_follower", "Subscribed to pose from file!");
   }
 
-  
-  
-  ros::Rate rate(100);
-  while(ros::ok()) {
 
+    bool declutch_lag = false;
+
+    declutch.data = false;
+    declutch_uplatch = false;
+    declutch_downlatch = false;
+
+  ros::Rate rate(20);
+  while(ros::ok()) {
+    if (declutch_lag-declutch.data == -1)declutch_uplatch = true;
+    if (declutch.data-declutch_lag == -1)declutch_downlatch = true;
+    declutch_lag = declutch.data;
+
+
+
+    /*
+    ROS_INFO("declutch_state is: ", declutch_state_bool);
+    ROS_INFO("declutch_uplatch is: ", declutch_uplatch_bool);
+    ROS_INFO("declutch_downlatch is: ", declutch_downlatch_bool);
+    */
+
+    std::cout<< "declutch_state is: "<< declutch.data<<std::endl;
+    std::cout<< "declutch_uplatch is: "<< declutch_uplatch<<std::endl;
+    std::cout<< "declutch_downlatch is: "<< declutch_downlatch<<std::endl;
+
+    declutch_uplatch = false;
+    declutch_downlatch = false;
     rate.sleep();
   }
   
