@@ -36,12 +36,27 @@
 #include <iimoveit/robot_interface.h>
 #include <tf/LinearMath/Quaternion.h>
 #include <tf/transform_broadcaster.h>
-#include <cstdi
+#include <cstdio.h>
 
-//#include <conio.h>  //for function getch()
-//#include <stdio.    //for function getch()
-//#include <tf2_ros/static_transform_broadcaster.h>
-//#include <geometry_msgs/TransformStamped.h>
+
+bool declutch_state_bool;
+bool declutch_uplatch_bool;
+bool declutch_downlatch_bool;
+
+void set_declutch_state(const std_msgs::Bool boolean){
+    declutch_state_bool = boolean.data;
+}
+
+void set_declutch_uplatch(const std_msgs::Bool boolean){
+    declutch_uplatch_bool = boolean.data;
+}
+
+void set_declutch_downlatch(const std_msgs::Bool boolean){
+    declutch_downlatch_bool = boolean.data;
+}
+
+geometry_msgs::PoseStamped declutch_pose;
+
 
 
 
@@ -235,7 +250,14 @@ private:
       target_pose.orientation.z = relative_quaternion_mirror.getZ();
       target_pose.orientation.w = relative_quaternion_mirror.getW();
       */
-      publishPoseGoal(target_pose, 0.01);
+
+      if(declutch_downlatch_bool) {
+        setBasePoseToCurrent();
+        first_time_ = true;
+      }
+      if(declutch_uplatch_bool) declutch_pose.pose = getPose(std::string("iiwa_s_model_finger_1")).pose;
+      if(declutch_state_bool) publishPoseGoal(declutch_pose, 0.01);
+      if(!declutch_state_bool) publishPoseGoal(target_pose, 0.01);;
 
   }
 
@@ -250,6 +272,18 @@ int main(int argc, char **argv)
   ros::init(argc, argv, "move_group_pose_follower");
   ros::NodeHandle node_handle;
   ros::AsyncSpinner spinner(1);
+
+  //-----------------------------------------------------------
+  //code for declutch
+
+  ros::Subscriber declutch_state = node_handle.subscribe("/declutch_state", 10, &set_declutch_state);
+  ros::Subscriber declutch_uplatch = node_handle.subscribe("/declutch_uplatch", 10, &set_declutch_uplatch);
+  ros::Subscriber declutch_downlatch = node_handle.subscribe("/declutch_downlatch", 10, &set_declutch_downlatch);
+
+  //-------------------------------------------------------------
+
+
+
   spinner.start();
 	
 	double scale_x, scale_y, scale_z, scale_rot_x, scale_rot_y, scale_rot_z; 
@@ -288,37 +322,14 @@ int main(int argc, char **argv)
     ROS_INFO_NAMED("pose_follower", "Subscribed to pose from file!");
   }
 
-  ros::Rate rate(100);
   
-  char pressedKey = getch();
+  
+  ros::Rate rate(100);
+  while(ros::ok()) {
 
-  if(pressedKey == 'c'){
-    while(ros::ok()){
-      target_pose.getPose();
-      publishPoseGoal(target_pose, 1.0)
-      if getch() !== 'c'){
-        setBasePoseToCurrent();
-        break;
-      }
-    }
+    rate.sleep();
   }
-  else{
-      if(udp_input) {
-        pose_follower.registerSubscriberRelative(std::string("/poseFromUDP/PoseStamped"));
-        ROS_INFO_NAMED("pose_follower", "Subscribed to pose from UDP!");
-      }
-      else {
-        pose_follower.registerSubscriberRelative(std::string("/poseFromFile/PoseStampedRelative"));
-        //pose_follower.registerSubscriberAbsolute(std::string("/poseFromFile/PoseStampedAbsolute"));
-        ROS_INFO_NAMED("pose_follower", "Subscribed to pose from file!");
-      }
-
-    while(ros::ok()) {
-      //transform_broadcaster.sendTransform(tf::StampedTransform(operator_frame, ros::Time::now(), "world", "operator"));
-      // ROS_INFO_NAMED("pose_follower", "Execution of while loop!");
-      rate.sleep();
-    }
-  }
+  
   ros::shutdown();
   return 0;
 }
