@@ -247,7 +247,7 @@ private:
       //if(declutch_uplatch) declutch_pose.pose = getPose(std::string("iiwa_s_model_finger_1")).pose;
       if(declutch_uplatch) {
           std::cout<< "Hallo, gleich wird getPose aufgerufen"<<std::endl;
-          declutch_pose = target_pose;
+          declutch_pose.pose = target_pose;
           std::cout<< "getPose ist ausgeführt worden!"<<std::endl;
       }
 
@@ -309,23 +309,24 @@ int main(int argc, char **argv)
 //  pose_follower.moveToBasePose();
 
 	// use when initial joint positions are given
-
+/*
     //set pose and publish for Debug_________________________________________
     debug_pose = pose_follower.getPose();                                   //
     pose_publisher.publish(debug_pose);                                     //
     std::cout<< "Debug Code executed 1 "<<std::endl;                        //
     //______________________________________________________________________//
-
+*/
 
 	pose_follower.moveToInitialJointPositions();
 	pose_follower.setBasePoseToCurrent();
 
+	/*
     //set pose and publish for Debug_________________________________________
     debug_pose = pose_follower.getPose();                                   //
     pose_publisher.publish(debug_pose);                                     //
     std::cout<< "Debug Code executed 2 "<<std::endl;                        //
     //______________________________________________________________________//
-
+*/
     pose_follower.waitForApproval();
 
   if(udp_input) {
@@ -338,14 +339,15 @@ int main(int argc, char **argv)
     ROS_INFO_NAMED("pose_follower", "Subscribed to pose from file!");
   }
 
-  pose_follower.waitForApproval();
+  //pose_follower.waitForApproval();
 
+  /*
     //set pose and publish for Debug_________________________________________
     debug_pose = pose_follower.getPose();                                   //
     pose_publisher.publish(debug_pose);                                     //
     std::cout<< "Debug Code executed 3 "<<std::endl;                        //
     //______________________________________________________________________//
-
+*/
     bool declutch_lag = false;
 
     declutch.data = false;
@@ -365,7 +367,7 @@ int main(int argc, char **argv)
       //______________________________________________________________________//
     if(declutch.data) std::cout<< "declutch is true"<<std::endl;
     if(declutch_uplatch) std::cout<< "declutch_uplatch is true"<<std::endl;
-    if(declutch_downlatch) std::cout<< "declutch_uplatch is true"<<std::endl;
+    if(declutch_downlatch) std::cout<< "declutch_downlatch is true"<<std::endl;
 
     /*
     ROS_INFO("declutch_state is: ", declutch_state_bool);
