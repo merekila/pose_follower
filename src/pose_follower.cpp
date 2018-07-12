@@ -233,32 +233,18 @@ private:
       target_pose.orientation.y = relative_quaternion.getY();
       target_pose.orientation.z = relative_quaternion.getZ();
       target_pose.orientation.w = relative_quaternion.getW();
-      /*
-      target_pose.orientation.x = relative_quaternion_mirror.getX();
-      target_pose.orientation.y = relative_quaternion_mirror.getY();
-      target_pose.orientation.z = relative_quaternion_mirror.getZ();
-      target_pose.orientation.w = relative_quaternion_mirror.getW();
-      */
+
 
       if(declutch_downlatch) {
         setBasePoseToCurrent();
         first_time_ = true;
       }
-      //if(declutch_uplatch) declutch_pose.pose = getPose(std::string("iiwa_s_model_finger_1")).pose;
       if(declutch_uplatch) {
-          std::cout<< "Hallo, gleich wird getPose aufgerufen"<<std::endl;
           declutch_pose.pose = target_pose;
-          std::cout<< "getPose ist ausgeführt worden!"<<std::endl;
       }
 
       if(declutch.data) publishPoseGoal(declutch_pose, 0.01);
       if(!declutch.data) publishPoseGoal(target_pose, 0.01);;
-
-      //set pose and publish for Debug_________________________________________
-      //debug_pose = getPose();                                //
-      //cartPoseLin_publisher_.publish(debug_pose);                            //
-      //std::cout<< "Debug Code executed Callback "<<std::endl;                 //
-      //______________________________________________________________________//
 
 
   }
@@ -275,14 +261,6 @@ int main(int argc, char **argv)
   ros::NodeHandle node_handle;
   ros::AsyncSpinner spinner(1);
   ros::Publisher pose_publisher = node_handle.advertise<geometry_msgs::PoseStamped>("getPoseDebug", 1);
-  //-----------------------------------------------------------
-  //code for declutch
-/*
-  ros::Subscriber declutch_state = node_handle.subscribe("/declutch_state", 10, &set_declutch_state);
-  ros::Subscriber declutch_uplatch = node_handle.subscribe("/declutch_uplatch", 10, &set_declutch_uplatch);
-  ros::Subscriber declutch_downlatch = node_handle.subscribe("/declutch_downlatch", 10, &set_declutch_downlatch);
-*/
-  //-------------------------------------------------------------
 
   ros::Subscriber keyup_sub = node_handle.subscribe("/keyboard/keyup", 10, &chatterCallbackUp);
   ros::Subscriber keydown_sub = node_handle.subscribe("/keyboard/keydown", 10, &chatterCallbackDown);
@@ -302,31 +280,11 @@ int main(int argc, char **argv)
 
   pose_follower::PoseFollower pose_follower(&node_handle, "manipulator", "world", scale_x, scale_y, scale_z, scale_rot_x, scale_rot_y, scale_rot_z, 2);
 
-	
-//  pose_follower.getOperatorTransform();
 
-	// use when base pose is given
-//  pose_follower.moveToBasePose();
-
-	// use when initial joint positions are given
-/*
-    //set pose and publish for Debug_________________________________________
-    debug_pose = pose_follower.getPose();                                   //
-    pose_publisher.publish(debug_pose);                                     //
-    std::cout<< "Debug Code executed 1 "<<std::endl;                        //
-    //______________________________________________________________________//
-*/
 
 	pose_follower.moveToInitialJointPositions();
 	pose_follower.setBasePoseToCurrent();
 
-	/*
-    //set pose and publish for Debug_________________________________________
-    debug_pose = pose_follower.getPose();                                   //
-    pose_publisher.publish(debug_pose);                                     //
-    std::cout<< "Debug Code executed 2 "<<std::endl;                        //
-    //______________________________________________________________________//
-*/
     pose_follower.waitForApproval();
 
   if(udp_input) {
@@ -339,15 +297,7 @@ int main(int argc, char **argv)
     ROS_INFO_NAMED("pose_follower", "Subscribed to pose from file!");
   }
 
-  //pose_follower.waitForApproval();
 
-  /*
-    //set pose and publish for Debug_________________________________________
-    debug_pose = pose_follower.getPose();                                   //
-    pose_publisher.publish(debug_pose);                                     //
-    std::cout<< "Debug Code executed 3 "<<std::endl;                        //
-    //______________________________________________________________________//
-*/
     bool declutch_lag = false;
 
     declutch.data = false;
@@ -360,32 +310,10 @@ int main(int argc, char **argv)
     if (declutch.data-declutch_lag == -1)declutch_downlatch = true;
     declutch_lag = declutch.data;
 
-      //set pose and publish for Debug_________________________________________
-      //debug_pose = pose_follower.getPose();                                //
-      //pose_publisher.publish(debug_pose);                                  //
-      //std::cout<< "Debug Code executed loop "<<std::endl;                     //
-      //______________________________________________________________________//
+
     if(declutch.data) std::cout<< "declutch is true"<<std::endl;
     if(declutch_uplatch) std::cout<< "declutch_uplatch is true"<<std::endl;
     if(declutch_downlatch) std::cout<< "declutch_downlatch is true"<<std::endl;
-
-    /*
-    ROS_INFO("declutch_state is: ", declutch_state_bool);
-    ROS_INFO("declutch_uplatch is: ", declutch_uplatch_bool);
-    ROS_INFO("declutch_downlatch is: ", declutch_downlatch_bool);
-
-    */
-
-    //std::cout<< "declutch_state is: "<< declutch.data<<std::endl;
-    //std::cout<< "declutch_uplatch is: "<< declutch_uplatch<<std::endl;
-    //std::cout<< "declutch_downlatch is: "<< declutch_downlatch<<std::endl;
-/*
-      if(declutch_uplatch) {
-          std::cout<< "Hallo, gleich wird getPose aufgerufen"<<std::endl;
-          declutch_pose.pose = pose_follower.getPose().pose;
-          std::cout<< "getPose ist ausgeführt worden!"<<std::endl;
-      }
-*/
 
     declutch_uplatch = false;
     declutch_downlatch = false;
