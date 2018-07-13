@@ -40,15 +40,11 @@
 #include "std_msgs/Bool.h"
 #include <keyboard/Key.h>
 
+
+//Code for Clutching=====================================================
 std_msgs::Bool declutch;
 bool declutch_uplatch;
 bool declutch_downlatch;
-
-/*
-bool declutch_state_bool;
-bool declutch_uplatch_bool;
-bool declutch_downlatch_bool;
-*/
 
 void chatterCallbackUp(const keyboard::Key& msg)
 {
@@ -60,23 +56,9 @@ void chatterCallbackDown(const keyboard::Key& msg)
     declutch.data = true;
 }
 
-/*
-void set_declutch_state(const std_msgs::Bool boolean){
-    declutch_state_bool = boolean.data;
-}
-
-void set_declutch_uplatch(const std_msgs::Bool boolean){
-    declutch_uplatch_bool = boolean.data;
-}
-
-void set_declutch_downlatch(const std_msgs::Bool boolean){
-    declutch_downlatch_bool = boolean.data;
-}
-*/
-
 geometry_msgs::PoseStamped declutch_pose;
 geometry_msgs::PoseStamped debug_pose;
-
+//=======================================================================
 
 
 
@@ -101,30 +83,31 @@ public:
         max_radius2_(max_radius*max_radius),
         first_time_(true) {
 
-		iiwa_initial_joint_positions_.joint_names.resize(7);
-		//iwa_initial_joint_positions_.joint_names = RobotInterface::getJointNames();
-    iiwa_initial_joint_positions_.joint_names[0] = "iiwa_joint_1"; 
-    iiwa_initial_joint_positions_.joint_names[1] = "iiwa_joint_2";
-    iiwa_initial_joint_positions_.joint_names[2] = "iiwa_joint_3";
-    iiwa_initial_joint_positions_.joint_names[3] = "iiwa_joint_4";
-    iiwa_initial_joint_positions_.joint_names[4] = "iiwa_joint_5";
-    iiwa_initial_joint_positions_.joint_names[5] = "iiwa_joint_6";
-    iiwa_initial_joint_positions_.joint_names[6] = "iiwa_joint_7";
-		iiwa_initial_joint_positions_.points.resize(1);
-		iiwa_initial_joint_positions_.points[0].positions.resize(7);
-    // Anthropomorphic
-		iiwa_initial_joint_positions_.points[0].positions[0] = 3.1416/180.0 * -1.0 * -30.97;
-		iiwa_initial_joint_positions_.points[0].positions[1] = 3.1416/180.0 * (-1.0 * 18.34 + 90.0);
-		iiwa_initial_joint_positions_.points[0].positions[2] = 3.1416/180.0 * -21.67;
-		iiwa_initial_joint_positions_.points[0].positions[3] = 3.1416/180.0 * -1.0 * -57.57;
-		iiwa_initial_joint_positions_.points[0].positions[4] = 3.1416/180.0 * (59.36 - 90.0); 
-		iiwa_initial_joint_positions_.points[0].positions[5] = 3.1416/180.0 * (-1.0 * -4.63 + 90.0); 
-		iiwa_initial_joint_positions_.points[0].positions[6] = 3.1416/180.0 * 0.0;
+            iiwa_initial_joint_positions_.joint_names.resize(7);
+            //iwa_initial_joint_positions_.joint_names = RobotInterface::getJointNames();
+            iiwa_initial_joint_positions_.joint_names[0] = "iiwa_joint_1";
+            iiwa_initial_joint_positions_.joint_names[1] = "iiwa_joint_2";
+            iiwa_initial_joint_positions_.joint_names[2] = "iiwa_joint_3";
+            iiwa_initial_joint_positions_.joint_names[3] = "iiwa_joint_4";
+            iiwa_initial_joint_positions_.joint_names[4] = "iiwa_joint_5";
+            iiwa_initial_joint_positions_.joint_names[5] = "iiwa_joint_6";
+            iiwa_initial_joint_positions_.joint_names[6] = "iiwa_joint_7";
+            iiwa_initial_joint_positions_.points.resize(1);
+            iiwa_initial_joint_positions_.points[0].positions.resize(7);
+
+            // Anthropomorphic
+            iiwa_initial_joint_positions_.points[0].positions[0] = 3.1416/180.0 * -1.0 * -30.97;
+            iiwa_initial_joint_positions_.points[0].positions[1] = 3.1416/180.0 * (-1.0 * 18.34 + 90.0);
+            iiwa_initial_joint_positions_.points[0].positions[2] = 3.1416/180.0 * -21.67;
+            iiwa_initial_joint_positions_.points[0].positions[3] = 3.1416/180.0 * -1.0 * -57.57;
+            iiwa_initial_joint_positions_.points[0].positions[4] = 3.1416/180.0 * (59.36 - 90.0);
+            iiwa_initial_joint_positions_.points[0].positions[5] = 3.1416/180.0 * (-1.0 * -4.63 + 90.0);
+            iiwa_initial_joint_positions_.points[0].positions[6] = 3.1416/180.0 * 0.0;
 
 
-    operator_rotation_ = tf::createQuaternionFromRPY(0.0, 0.0, 0.0);
+            operator_rotation_ = tf::createQuaternionFromRPY(0.0, 0.0, 0.0);
 
-  }
+        }
 
   void moveToBasePose() {
     planAndMove(base_pose_, std::string("base pose"));
@@ -146,29 +129,27 @@ public:
     return base_pose_;
   }
 
-	void moveToInitialJointPositions() {
-		planAndMove(iiwa_initial_joint_positions_.points[0].positions, std::string("initial joint positions"));
-	}
+    void moveToInitialJointPositions() {
+        planAndMove(iiwa_initial_joint_positions_.points[0].positions, std::string("initial joint positions"));
+    }
 
-	void setBasePoseToCurrent() {
-		base_pose_ = getPose(std::string("iiwa_s_model_finger_1")).pose; // formerly: "iiwa_link_ee"
-	}
+    void setBasePoseToCurrent() {
+        base_pose_ = getPose(std::string("iiwa_s_model_finger_1")).pose; // formerly: "iiwa_link_ee"
+    }
 
 
-  // Own implementation of a (only rotational) transform, because transfromPose() from TransformListener throws extrapolation exception
-  geometry_msgs::PoseStamped transformOperatorPose(const geometry_msgs::PoseStamped pose_to_transform) {
+    // Own implementation of a (only rotational) transform, because transformPose() from TransformListener throws extrapolation exception
+    geometry_msgs::PoseStamped transformOperatorPose(const geometry_msgs::PoseStamped pose_to_transform) {
     geometry_msgs::PoseStamped transformed_pose;
     tf::Vector3 position_vec = tf::Vector3(pose_to_transform.pose.position.x, pose_to_transform.pose.position.y, pose_to_transform.pose.position.z);
 
-    //tf::vector3TFToMsg(
-    //ROS_INFO("%.4f %.4f %.4f", );
     transformed_pose = pose_to_transform;
     return transformed_pose;
   } 
 
 private:
   ros::Subscriber pose_subscriber_;
-	trajectory_msgs::JointTrajectory iiwa_initial_joint_positions_;
+  trajectory_msgs::JointTrajectory iiwa_initial_joint_positions_;
   geometry_msgs::Pose base_pose_;
   double scale_x_;
   double scale_y_;
@@ -179,8 +160,8 @@ private:
   double max_radius_;
   double max_radius2_;
   bool first_time_;
-  tf::Quaternion calib_quaternion_; // relation between initial poses of iiwa and mcs
-  double mcs_x_init_, mcs_y_init_, mcs_z_init_;
+  tf::Quaternion calib_quaternion_; // relation between initial poses of iiwa and omega
+  double omega_x_init_, omega_y_init_, omega_z_init_;
   // tf::Transform operator_frame_;
   // tf::TransformBroadcaster transform_broadcaster_;
   // tf::TransformListener transform_listener_;
@@ -200,13 +181,20 @@ private:
 
       tf::Quaternion base_quaternion(base_pose_.orientation.x, base_pose_.orientation.y, base_pose_.orientation.z, base_pose_.orientation.w);
       tf::Quaternion next_quaternion(pose_transformed.pose.orientation.x, pose_transformed.pose.orientation.y, pose_transformed.pose.orientation.z, pose_transformed.pose.orientation.w);
-      
+
+
       if (first_time_){
         calib_quaternion_ = inverse(next_quaternion);
-        mcs_x_init_ = x;
-        mcs_y_init_ = y;
-        mcs_z_init_ = z;            
+        omega_x_init_ += x;
+        omega_y_init_ += y;
+        omega_z_init_ += z;
+        std::cout<< "omega_x_init_ is "<<omega_x_init_<<std::endl;
+        std::cout<< "omega_y_init_ is "<<omega_y_init_<<std::endl;  
+        std::cout<< "omega_z_init_ is "<<omega_z_init_<<std::endl;              
         first_time_ = false;
+        //debug code
+        std::cout<< " first time *** first time *** first time *** first time *** first time *** "<<std::endl;
+
       }  
 
       tf::Quaternion relative_quaternion = next_quaternion * calib_quaternion_;
@@ -226,17 +214,20 @@ private:
       relative_quaternion = relative_quaternion * base_quaternion;
 
       geometry_msgs::Pose target_pose = base_pose_;
-      target_pose.position.x += (x - mcs_x_init_);
-      target_pose.position.y += 1.0 * (y - mcs_y_init_); 
-      target_pose.position.z += (z - mcs_z_init_);
+      target_pose.position.x += (x - omega_x_init_);
+      target_pose.position.y += 1.0 * (y - omega_y_init_); 
+      target_pose.position.z += (z - omega_z_init_);
       target_pose.orientation.x = relative_quaternion.getX();
       target_pose.orientation.y = relative_quaternion.getY();
       target_pose.orientation.z = relative_quaternion.getZ();
       target_pose.orientation.w = relative_quaternion.getW();
 
-
+      // if(declutch_downlatch) std::cout<< "declutch_downlatch is true"<<std::endl;
+      // if(declutch.data) std::cout<< "declutch is true"<<std::endl;
+      // if(declutch_uplatch) std::cout<< "declutch_uplatch is true"<<std::endl;
+      
       if(declutch_downlatch) {
-        setBasePoseToCurrent();
+        base_pose_ = target_pose;
         first_time_ = true;
       }
       if(declutch_uplatch) {
@@ -259,7 +250,7 @@ int main(int argc, char **argv)
 {
   ros::init(argc, argv, "move_group_pose_follower");
   ros::NodeHandle node_handle;
-  ros::AsyncSpinner spinner(1);
+  ros::AsyncSpinner spinner(4);
   ros::Publisher pose_publisher = node_handle.advertise<geometry_msgs::PoseStamped>("getPoseDebug", 1);
 
   ros::Subscriber keyup_sub = node_handle.subscribe("/keyboard/keyup", 10, &chatterCallbackUp);
@@ -285,7 +276,7 @@ int main(int argc, char **argv)
 	pose_follower.moveToInitialJointPositions();
 	pose_follower.setBasePoseToCurrent();
 
-    pose_follower.waitForApproval();
+  pose_follower.waitForApproval();
 
   if(udp_input) {
     pose_follower.registerSubscriberRelative(std::string("/poseFromUDP/PoseStamped"));
@@ -298,26 +289,29 @@ int main(int argc, char **argv)
   }
 
 
-    bool declutch_lag = false;
+  bool declutch_lag = false;
 
-    declutch.data = false;
-    declutch_uplatch = false;
-    declutch_downlatch = false;
+  declutch.data = false;
+  declutch_uplatch = false;
+  declutch_downlatch = false;
 
-  ros::Rate rate(50);
+  ros::Rate rate(30);
+  spinner.stop();
   while(ros::ok()) {
+    ros::spinOnce();
     if (declutch_lag-declutch.data == -1)declutch_uplatch = true;
     if (declutch.data-declutch_lag == -1)declutch_downlatch = true;
     declutch_lag = declutch.data;
 
-
-    if(declutch.data) std::cout<< "declutch is true"<<std::endl;
     if(declutch_uplatch) std::cout<< "declutch_uplatch is true"<<std::endl;
+    if(declutch.data) std::cout<< "declutch is true"<<std::endl;
     if(declutch_downlatch) std::cout<< "declutch_downlatch is true"<<std::endl;
-
+    
+    ros::spinOnce();
+    rate.sleep();
     declutch_uplatch = false;
     declutch_downlatch = false;
-    rate.sleep();
+    
   }
   
   ros::shutdown();
