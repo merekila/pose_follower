@@ -171,16 +171,25 @@ private:
 
   void poseCallbackRelative(const geometry_msgs::PoseStamped::ConstPtr& msg) {
 
-      geometry_msgs::PoseStamped pose_transformed;
+      geometry_msgs::PoseStamped omega_pose;
 
-      pose_transformed = transformOperatorPose(*msg);
+      omega_pose = transformOperatorPose(*msg); //Why??? Why not pose_transformed = msg ?
 
-      double x = pose_transformed.pose.position.x * scale_x_;
-      double y = pose_transformed.pose.position.y * scale_y_;
-      double z = pose_transformed.pose.position.z * scale_z_;
+      scale_rot_x_ = 0.2;
+      scale_rot_y_ = 0.2;
+      scale_rot_z_ = 0.2;
+      scale_x_ = 3;
+      scale_y_ = 3;
+      scale_z_ = 3;
+
+      double x = omega_pose.pose.position.x * scale_x_;
+      double y = omega_pose.pose.position.y * scale_y_;
+      double z = omega_pose.pose.position.z * scale_z_;
 
       tf::Quaternion base_quaternion(base_pose_.orientation.x, base_pose_.orientation.y, base_pose_.orientation.z, base_pose_.orientation.w);
-      tf::Quaternion next_quaternion(pose_transformed.pose.orientation.x, pose_transformed.pose.orientation.y, pose_transformed.pose.orientation.z, pose_transformed.pose.orientation.w);
+      tf::Quaternion next_quaternion(omega_pose.pose.orientation.x, omega_pose.pose.orientation.y, omega_pose.pose.orientation.z, omega_pose.pose.orientation.w);
+      //tf::Quaternion relative_quaternion = next_quaternion * calib_quaternion_;
+      //tf::Matrix3x3 rotMatrix(relative_quaternion);
 
 
       if (first_time_){
@@ -188,9 +197,9 @@ private:
         omega_x_init_ += x;
         omega_y_init_ += y;
         omega_z_init_ += z;
-        std::cout<< "omega_x_init_ is "<<omega_x_init_<<std::endl;
-        std::cout<< "omega_y_init_ is "<<omega_y_init_<<std::endl;  
-        std::cout<< "omega_z_init_ is "<<omega_z_init_<<std::endl;              
+        //std::cout<< "omega_x_init_ is "<<omega_x_init_<<std::endl;
+        //std::cout<< "omega_y_init_ is "<<omega_y_init_<<std::endl;  
+        //std::cout<< "omega_z_init_ is "<<omega_z_init_<<std::endl;              
         first_time_ = false;
         //debug code
         std::cout<< " first time *** first time *** first time *** first time *** first time *** "<<std::endl;
@@ -198,30 +207,36 @@ private:
       }  
 
       tf::Quaternion relative_quaternion = next_quaternion * calib_quaternion_;
+      tf::Matrix3x3 rotMatrix(relative_quaternion);
+      //std::cout<< "Scaling values are: scale_x="<< scale_x_ << ", scale_y="<< scale_y_<< ", scale_z="<<scale_z_<<std::endl;
 
       //Scaling
-      if ( (scale_rot_x_ != 1.0) || (scale_rot_y_ != 1.0) || (scale_rot_z_ != 1.0) ) {
-        tf::Matrix3x3 rotMatrix(relative_quaternion);
+      //if ( (scale_rot_x_ != 1.0) || (scale_rot_y_ != 1.0) || (scale_rot_z_ != 1.0) ) {
+        //tf::Matrix3x3 rotMatrix(relative_quaternion);
         double euler_x, euler_y, euler_z;
         rotMatrix.getEulerYPR(euler_z, euler_y, euler_x);
         euler_x *= scale_rot_x_;
         euler_y *= scale_rot_y_;
-        euler_z *= scale_rot_z_;
+        euler_z *= -scale_rot_z_;
         rotMatrix.setEulerYPR(euler_z, euler_y, euler_x);
         rotMatrix.getRotation(relative_quaternion);
-      }
+        //std::cout<< "Scaling performed!"<<std::endl;
+      //}
 
-      relative_quaternion = relative_quaternion * base_quaternion;
+      //relative_quaternion = relative_quaternion * base_quaternion;
+      relative_quaternion = base_quaternion * relative_quaternion;
 
       geometry_msgs::Pose target_pose = base_pose_;
       target_pose.position.x += (x - omega_x_init_);
       target_pose.position.y += 1.0 * (y - omega_y_init_); 
       target_pose.position.z += (z - omega_z_init_);
+      //target_pose.orientation *= relative_quaternion;
       target_pose.orientation.x = relative_quaternion.getX();
       target_pose.orientation.y = relative_quaternion.getY();
       target_pose.orientation.z = relative_quaternion.getZ();
       target_pose.orientation.w = relative_quaternion.getW();
 
+      base_pose_.orientation = target_pose.orientation;
       // if(declutch_downlatch) std::cout<< "declutch_downlatch is true"<<std::endl;
       // if(declutch.data) std::cout<< "declutch is true"<<std::endl;
       // if(declutch_uplatch) std::cout<< "declutch_uplatch is true"<<std::endl;
@@ -258,12 +273,13 @@ int main(int argc, char **argv)
 
   spinner.start();
 	
-  double scale_x, scale_y, scale_z, scale_rot_x, scale_rot_y, scale_rot_z;node_handle.param("/iiwa/pose_follower/scale_x", scale_x, 1.0);
-  node_handle.param("/iiwa/pose_follower/scale_y", scale_y, 1.0);
-  node_handle.param("/iiwa/pose_follower/scale_z", scale_z, 1.0);
-  node_handle.param("/iiwa/pose_follower/scale_rot_x", scale_rot_x, 1.0);
-  node_handle.param("/iiwa/pose_follower/scale_rot_y", scale_rot_y, 1.0);
-  node_handle.param("/iiwa/pose_follower/scale_rot_z", scale_rot_z, 1.0);
+  double scale_x, scale_y, scale_z, scale_rot_x, scale_rot_y, scale_rot_z;
+  node_handle.param("/iiwa/pose_follower/scale_x", scale_x, 3.0);
+  node_handle.param("/iiwa/pose_follower/scale_y", scale_y, 3.0);
+  node_handle.param("/iiwa/pose_follower/scale_z", scale_z, 3.0);
+  node_handle.param("/iiwa/pose_follower/scale_rot_x", scale_rot_x, 0.3);
+  node_handle.param("/iiwa/pose_follower/scale_rot_y", scale_rot_y, 0.3);
+  node_handle.param("/iiwa/pose_follower/scale_rot_z", scale_rot_z, 0.3);
   bool udp_input;
   node_handle.param("/iiwa/pose_follower/udp", udp_input, false);
 
@@ -276,7 +292,7 @@ int main(int argc, char **argv)
 	pose_follower.moveToInitialJointPositions();
 	pose_follower.setBasePoseToCurrent();
 
-  pose_follower.waitForApproval();
+  //pose_follower.waitForApproval();
 
   if(udp_input) {
     pose_follower.registerSubscriberRelative(std::string("/poseFromUDP/PoseStamped"));
