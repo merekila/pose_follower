@@ -69,19 +69,19 @@ geometry_msgs::PoseStamped debug_pose;
 namespace pose_follower {
 
 
-class PoseFollower : public iimoveit::RobotInterface {
-public:
-  PoseFollower(ros::NodeHandle* node_handle, const std::string& planning_group, const std::string& base_frame, double scale_x, double scale_y, double scale_z, double scale_rot_x, double scale_rot_y, double scale_rot_z, double max_radius)
-      : RobotInterface(node_handle, planning_group, base_frame),
-        scale_x_(scale_x),
-        scale_y_(scale_y),
-        scale_z_(scale_z),
-        scale_rot_x_(scale_rot_x),
-        scale_rot_y_(scale_rot_y),
-        scale_rot_z_(scale_rot_z),
-        max_radius_(max_radius),
-        max_radius2_(max_radius*max_radius),
-        first_time_(true) {
+    class PoseFollower : public iimoveit::RobotInterface {
+    public:
+        PoseFollower(ros::NodeHandle* node_handle, const std::string& planning_group, const std::string& base_frame, double scale_x, double scale_y, double scale_z, double scale_rot_x, double scale_rot_y, double scale_rot_z, double max_radius)
+                : RobotInterface(node_handle, planning_group, base_frame),
+                  scale_x_(scale_x),
+                  scale_y_(scale_y),
+                  scale_z_(scale_z),
+                  scale_rot_x_(scale_rot_x),
+                  scale_rot_y_(scale_rot_y),
+                  scale_rot_z_(scale_rot_z),
+                  max_radius_(max_radius),
+                  max_radius2_(max_radius*max_radius),
+                  first_time_(true) {
 
             iiwa_initial_joint_positions_.joint_names.resize(7);
             //iwa_initial_joint_positions_.joint_names = RobotInterface::getJointNames();
@@ -109,227 +109,318 @@ public:
 
         }
 
-  void moveToBasePose() {
-    planAndMove(base_pose_, std::string("base pose"));
-  }
+        void moveToBasePose() {
+            planAndMove(base_pose_, std::string("base pose"));
+        }
 
-  void registerSubscriberRelative(const std::string& topic) {
-    pose_subscriber_ = node_handle_->subscribe(topic, 1, &PoseFollower::poseCallbackRelative, this);
-  }
+        void registerSubscriberRelative(const std::string& topic) {
+            pose_subscriber_ = node_handle_->subscribe(topic, 1, &PoseFollower::poseCallbackRelative, this);
+        }
 
-  void registerSubscriberAbsolute(const std::string& topic) {
-    pose_subscriber_ = node_handle_->subscribe(topic, 1, &PoseFollower::poseCallbackAbsolute, this);
-  }
+        void registerSubscriberAbsolute(const std::string& topic) {
+            pose_subscriber_ = node_handle_->subscribe(topic, 1, &PoseFollower::poseCallbackAbsolute, this);
+        }
 
-  void setBasePose(const geometry_msgs::Pose& pose) {
-    base_pose_ = pose;
-  }
+        void setBasePose(const geometry_msgs::Pose& pose) {
+            base_pose_ = pose;
+        }
 
-  geometry_msgs::Pose getBasePose() {
-    return base_pose_;
-  }
+        geometry_msgs::Pose getBasePose() {
+            return base_pose_;
+        }
 
-    void moveToInitialJointPositions() {
-        planAndMove(iiwa_initial_joint_positions_.points[0].positions, std::string("initial joint positions"));
-    }
+        void moveToInitialJointPositions() {
+            planAndMove(iiwa_initial_joint_positions_.points[0].positions, std::string("initial joint positions"));
+        }
 
-    void setBasePoseToCurrent() {
-        base_pose_ = getPose(std::string("iiwa_s_model_finger_1")).pose; // formerly: "iiwa_link_ee"
-    }
+        void setBasePoseToCurrent() {
+            base_pose_ = getPose(std::string("iiwa_s_model_finger_1")).pose; // formerly: "iiwa_link_ee"
+            //target_pose = base_pose_;
+            std::cout<<"setBasePoseToCurrent"<<std::endl;
+        }
 
+        void setTargetPoseToBase() {
+            std::cout<<"setTargetPoseToBase"<<std::endl;
+            target_pose = base_pose_;
+            //omega_pose_old.pose =
 
-    // Own implementation of a (only rotational) transform, because transformPose() from TransformListener throws extrapolation exception
-    geometry_msgs::PoseStamped transformOperatorPose(const geometry_msgs::PoseStamped pose_to_transform) {
-    geometry_msgs::PoseStamped transformed_pose;
-    tf::Vector3 position_vec = tf::Vector3(pose_to_transform.pose.position.x, pose_to_transform.pose.position.y, pose_to_transform.pose.position.z);
+        }
 
-    transformed_pose = pose_to_transform;
-    return transformed_pose;
-  } 
-
-private:
-  ros::Subscriber pose_subscriber_;
-  trajectory_msgs::JointTrajectory iiwa_initial_joint_positions_;
-  geometry_msgs::Pose base_pose_;
-  double scale_x_;
-  double scale_y_;
-  double scale_z_;
-  double scale_rot_x_;
-  double scale_rot_y_;
-  double scale_rot_z_;
-  double max_radius_;
-  double max_radius2_;
-  bool first_time_;
-  tf::Quaternion calib_quaternion_; // relation between initial poses of iiwa and omega
-  double omega_x_init_, omega_y_init_, omega_z_init_;
-  // tf::Transform operator_frame_;
-  // tf::TransformBroadcaster transform_broadcaster_;
-  // tf::TransformListener transform_listener_;
-  // tf::StampedTransform operator_transform_;
-  tf::Quaternion operator_rotation_;
+        void setScalingFactors(double scalefactor_trans_x, double scalefactor_trans_y, double scalefactor_trans_z, double scalefactor_rot_x, double scalefactor_rot_y, double scalefactor_rot_z){
+            scale_x_ = scalefactor_trans_x;
+            scale_y_ = scalefactor_trans_y;
+            scale_z_ = scalefactor_trans_z;
+            scale_rot_x_ = scalefactor_rot_x;
+            scale_rot_y_ = scalefactor_rot_y;
+            scale_rot_z_ = scalefactor_rot_z;
+        }
+        void calculateRelativePose(geometry_msgs::PoseStamped &old_pose, geometry_msgs::PoseStamped &new_pose, geometry_msgs::PoseStamped &relative_pose){
+            //translational part
+            relative_pose.pose.position.x = new_pose.pose.position.x - old_pose.pose.position.x;
+            relative_pose.pose.position.y = new_pose.pose.position.y - old_pose.pose.position.y;
+            relative_pose.pose.position.z = new_pose.pose.position.z - old_pose.pose.position.z;
+            //TODO insert rotational part!?
+        }
 
 
-  void poseCallbackRelative(const geometry_msgs::PoseStamped::ConstPtr& msg) {
+        // Own implementation of a (only rotational) transform, because transformPose() from TransformListener throws extrapolation exception
+        geometry_msgs::PoseStamped transformOperatorPose(const geometry_msgs::PoseStamped pose_to_transform) {
+            geometry_msgs::PoseStamped transformed_pose;
+            tf::Vector3 position_vec = tf::Vector3(pose_to_transform.pose.position.x, pose_to_transform.pose.position.y, pose_to_transform.pose.position.z);
 
-      geometry_msgs::PoseStamped omega_pose;
+            transformed_pose = pose_to_transform;
+            return transformed_pose;
+        }
 
-      omega_pose = transformOperatorPose(*msg); //Why??? Why not pose_transformed = msg ?
-
-      scale_rot_x_ = 0.2;
-      scale_rot_y_ = 0.2;
-      scale_rot_z_ = 0.2;
-      scale_x_ = 3;
-      scale_y_ = 3;
-      scale_z_ = 3;
-
-      double x = omega_pose.pose.position.x * scale_x_;
-      double y = omega_pose.pose.position.y * scale_y_;
-      double z = omega_pose.pose.position.z * scale_z_;
-
-      tf::Quaternion base_quaternion(base_pose_.orientation.x, base_pose_.orientation.y, base_pose_.orientation.z, base_pose_.orientation.w);
-      tf::Quaternion next_quaternion(omega_pose.pose.orientation.x, omega_pose.pose.orientation.y, omega_pose.pose.orientation.z, omega_pose.pose.orientation.w);
-      //tf::Quaternion relative_quaternion = next_quaternion * calib_quaternion_;
-      //tf::Matrix3x3 rotMatrix(relative_quaternion);
-
-
-      if (first_time_){
-        calib_quaternion_ = inverse(next_quaternion);
-        omega_x_init_ += x;
-        omega_y_init_ += y;
-        omega_z_init_ += z;
-        //std::cout<< "omega_x_init_ is "<<omega_x_init_<<std::endl;
-        //std::cout<< "omega_y_init_ is "<<omega_y_init_<<std::endl;  
-        //std::cout<< "omega_z_init_ is "<<omega_z_init_<<std::endl;              
-        first_time_ = false;
-        //debug code
-        std::cout<< " first time *** first time *** first time *** first time *** first time *** "<<std::endl;
-
-      }  
-
-      tf::Quaternion relative_quaternion = next_quaternion * calib_quaternion_;
-      tf::Matrix3x3 rotMatrix(relative_quaternion);
-      //std::cout<< "Scaling values are: scale_x="<< scale_x_ << ", scale_y="<< scale_y_<< ", scale_z="<<scale_z_<<std::endl;
-
-      //Scaling
-      //if ( (scale_rot_x_ != 1.0) || (scale_rot_y_ != 1.0) || (scale_rot_z_ != 1.0) ) {
-        //tf::Matrix3x3 rotMatrix(relative_quaternion);
+    private:
+        ros::Subscriber pose_subscriber_;
+        trajectory_msgs::JointTrajectory iiwa_initial_joint_positions_;
+        geometry_msgs::Pose base_pose_;
+        double scale_x_;
+        double scale_y_;
+        double scale_z_;
+        double scale_rot_x_;
+        double scale_rot_y_;
+        double scale_rot_z_;
+        double max_radius_;
+        double max_radius2_;
+        bool first_time_;
+        tf::Quaternion omega_old_quaternion_; // relation between initial poses of iiwa and omega
+        double omega_x_init_, omega_y_init_, omega_z_init_;
+        // tf::Transform operator_frame_;
+        // tf::TransformBroadcaster transform_broadcaster_;
+        // tf::TransformListener transform_listener_;
+        // tf::StampedTransform operator_transform_;
+        tf::Quaternion operator_rotation_;
+        geometry_msgs::PoseStamped omega_pose_new;
+        geometry_msgs::PoseStamped omega_pose_relative;
+        geometry_msgs::PoseStamped omega_pose_old;
         double euler_x, euler_y, euler_z;
-        rotMatrix.getEulerYPR(euler_z, euler_y, euler_x);
-        euler_x *= scale_rot_x_;
-        euler_y *= scale_rot_y_;
-        euler_z *= -scale_rot_z_;
-        rotMatrix.setEulerYPR(euler_z, euler_y, euler_x);
-        rotMatrix.getRotation(relative_quaternion);
-        //std::cout<< "Scaling performed!"<<std::endl;
-      //}
+        //tf::Quaternion omega_old_quaternion;
+        //tf::Quaternion omega_new_quaternion;
+        //tf::Quaternion target_quaternion;
+        tf::Quaternion relative_quaternion;
+        tf::Quaternion relative_quaternion_scaled;
+        tf::Quaternion omega_old_inverse_quaternion;
 
-      //relative_quaternion = relative_quaternion * base_quaternion;
-      relative_quaternion = base_quaternion * relative_quaternion;
+        geometry_msgs::Pose target_pose;
+        //initialize the scaling factors
 
-      geometry_msgs::Pose target_pose = base_pose_;
-      target_pose.position.x += (x - omega_x_init_);
-      target_pose.position.y += 1.0 * (y - omega_y_init_); 
-      target_pose.position.z += (z - omega_z_init_);
-      //target_pose.orientation *= relative_quaternion;
-      target_pose.orientation.x = relative_quaternion.getX();
-      target_pose.orientation.y = relative_quaternion.getY();
-      target_pose.orientation.z = relative_quaternion.getZ();
-      target_pose.orientation.w = relative_quaternion.getW();
+        /*    scale_rot_x_ = 0.2;
+        scale_rot_y_ = 0.2;
+        scale_rot_z_ = 0.2;
+        scale_x_ = 3;
+        scale_y_ = 3;
+        scale_z_ = 3;*/
 
-      base_pose_.orientation = target_pose.orientation;
-      // if(declutch_downlatch) std::cout<< "declutch_downlatch is true"<<std::endl;
-      // if(declutch.data) std::cout<< "declutch is true"<<std::endl;
-      // if(declutch_uplatch) std::cout<< "declutch_uplatch is true"<<std::endl;
-      
-      if(declutch_downlatch) {
-        base_pose_ = target_pose;
-        first_time_ = true;
-      }
-      if(declutch_uplatch) {
-          declutch_pose.pose = target_pose;
-      }
+        double scaled_trans_x;
+        double scaled_trans_y;
+        double scaled_trans_z;
 
-      if(declutch.data) publishPoseGoal(declutch_pose, 0.01);
-      if(!declutch.data) publishPoseGoal(target_pose, 0.01);;
+        void poseCallbackRelative(const geometry_msgs::PoseStamped::ConstPtr& msg) {
+
+            //omega_pose_old = last_pose;
+            omega_pose_new = transformOperatorPose(*msg); //Why??? Why not omega_pose_new = msg ?
+            if(first_time_) {
+
+                omega_pose_old = omega_pose_new;
+                //std::cout<< "omega pose old set to new!"<< std::endl;
+                first_time_ = false;
+            }
+
+            //std::cout<< "Immina Callback1"<<std::endl;
+            /*if (first_time_){
+              omega_pose_old.pose = base_pose_;
+              first_time_ = false;
+            }*/
+            //ROS_INFO("omega new x is zero ", omega_pose_new.pose.position.x);
+            //ROS_INFO("omega old x is ");
+
+            //calculate omega_pose_relative ====================================================
+            //translational part
+            calculateRelativePose(omega_pose_old, omega_pose_new, omega_pose_relative);
+            //rotational part
+            tf::Quaternion omega_old_quaternion(omega_pose_old.pose.orientation.x, omega_pose_old.pose.orientation.y, omega_pose_old.pose.orientation.z, omega_pose_old.pose.orientation.w);
+            tf::Quaternion omega_new_quaternion(omega_pose_new.pose.orientation.x, omega_pose_new.pose.orientation.y, omega_pose_new.pose.orientation.z, omega_pose_new.pose.orientation.w);
+            std::cout << "x of omega old quaternion is " << omega_old_quaternion.getX() << std::endl;
+            std::cout << "x of omega new quaternion is " << omega_new_quaternion.getX() << std::endl;
+
+            omega_old_inverse_quaternion = inverse(omega_old_quaternion);
+            std::cout << "x of omega old quaternion inverse is " << omega_old_inverse_quaternion.getX() << std::endl;
+
+            relative_quaternion = omega_old_inverse_quaternion * omega_new_quaternion;
+            std::cout << "x of relative quaternion is " << relative_quaternion.getX() << std::endl;
+
+            /*
+            omega_pose_relative.pose.orientation.x = relative_quaternion.getX();
+            omega_pose_relative.pose.orientation.y = relative_quaternion.getY();
+            omega_pose_relative.pose.orientation.z = relative_quaternion.getZ();
+            omega_pose_relative.pose.orientation.w = relative_quaternion.getW();
+            */
+            //==================================================================================
 
 
-  }
 
-  void poseCallbackAbsolute(const geometry_msgs::PoseStamped::ConstPtr& msg) {
-    publishPoseGoal(msg->pose, 0.01);
-  }
-};
+            //initialise omega_pose_old for the next iteration==================================
+            /*omega_pose_old.pose.position.x = omega_pose_new.pose.position.x;
+            omega_pose_old.pose.position.y = omega_pose_new.pose.position.y;
+            omega_pose_old.pose.position.z = omega_pose_new.pose.position.z;*/
+            omega_pose_old = omega_pose_new;
+            std::cout << "omega pose old position x is " << omega_pose_old.pose.position.x << std::endl;
+
+
+            //std::cout<< "Immina Callback2"<<std::endl;
+
+
+            //scale omega_pose_relative ========================================================
+
+
+            //scale the translational part
+            scaled_trans_x = omega_pose_relative.pose.position.x * scale_x_;
+            scaled_trans_y = omega_pose_relative.pose.position.y * scale_y_;
+            scaled_trans_z = omega_pose_relative.pose.position.z * scale_z_;
+            //std::cout << "scaled_trans_x is " << scaled_trans_x << std::endl;
+
+            //scale the rotational part
+            //std::cout << "x of relative quaternion is " << relative_quaternion.getX() << std::endl;
+
+            tf::Matrix3x3 rotMatrix(relative_quaternion);
+            rotMatrix.getEulerYPR(euler_z, euler_y, euler_x);
+            std::cout << "euler_x is " << euler_x << std::endl;
+            euler_x *= scale_rot_x_;
+            euler_y *= scale_rot_y_;
+            euler_z *= scale_rot_z_;
+            std::cout << "euler_x is " << euler_x << std::endl;
+            //std::cout << "scale rot x is " << scale_rot_x_ << std::endl;
+            rotMatrix.setEulerYPR(euler_z, euler_y, euler_x);
+            rotMatrix.getRotation(relative_quaternion_scaled);
+            //==================================================================================
+            std::cout << "target pose orientation x before transform is " << target_pose.orientation.x << std::endl;
+
+
+            tf::Quaternion target_quaternion(target_pose.orientation.x, target_pose.orientation.y, target_pose.orientation.z, target_pose.orientation.w);
+            std::cout << "x of target quaternion is " << target_quaternion.getX() << std::endl;
+            target_quaternion *= relative_quaternion_scaled;
+
+            //std::cout<< " scaled x is "<< scaled_trans_x <<" scaled y is "<< scaled_trans_y <<" scaled z is "<< scaled_trans_z <<std::endl;
+            //Add relative pose to the last target
+            target_pose.position.x += scaled_trans_x;
+            target_pose.position.y += scaled_trans_y;
+            target_pose.position.z += scaled_trans_z;
+            //target_pose.orientation *= relative_quaternion;
+            target_pose.orientation.x = target_quaternion.getX();
+            target_pose.orientation.y = target_quaternion.getY();
+            target_pose.orientation.z = target_quaternion.getZ();
+            target_pose.orientation.w = target_quaternion.getW();
+            std::cout << "target pose orientation x is " << target_pose.orientation.x << std::endl;
+            //std::cout << "target pose pose x is " << target_pose.position.x << std::endl;
+            //base_pose_.orientation = target_pose.orientation;
+            //omega_pose_old.pose = target_pose;
+
+
+            //Clutching Algorithm=====================================================
+            if(declutch_downlatch) {
+                base_pose_ = target_pose;
+                first_time_ = true;
+                omega_pose_old = omega_pose_new;
+
+             /*   omega_pose_old.pose.position.x = omega_pose_new.pose.position.x;
+                omega_pose_old.pose.position.y = omega_pose_new.pose.position.y;
+                omega_pose_old.pose.position.z = omega_pose_new.pose.position.z;*/
+            }
+            if(declutch_uplatch) declutch_pose.pose = target_pose;
+            if(declutch.data) publishPoseGoal(declutch_pose, 0.01);
+            if(!declutch.data) publishPoseGoal(target_pose, 0.01);
+            //========================================================================
+
+            /*
+            //Adjust omega_pose_old
+            omega_pose_old.pose.position.x = target_pose.position.x - base_pose_.pose.x;
+            omega_pose_old.pose.position.y = target_pose.position.y - base_pose_.pose.y;
+            omega_pose_old.pose.position.z = target_pose.position.z - base_pose_.pose.z;
+
+            //todo adjust quaternions of omega_pose_old
+            tf::Quaternion omega_old_quaternion();
+            */
+        }
+
+        void poseCallbackAbsolute(const geometry_msgs::PoseStamped::ConstPtr& msg) {
+            publishPoseGoal(msg->pose, 0.01);
+        }
+    };
 } // namespace pose_follower
 
 int main(int argc, char **argv)
 {
-  ros::init(argc, argv, "move_group_pose_follower");
-  ros::NodeHandle node_handle;
-  ros::AsyncSpinner spinner(4);
-  ros::Publisher pose_publisher = node_handle.advertise<geometry_msgs::PoseStamped>("getPoseDebug", 1);
+    ros::init(argc, argv, "move_group_pose_follower");
+    ros::NodeHandle node_handle;
+    ros::AsyncSpinner spinner(1);
+    ros::Publisher pose_publisher = node_handle.advertise<geometry_msgs::PoseStamped>("getPoseDebug", 1);
 
-  ros::Subscriber keyup_sub = node_handle.subscribe("/keyboard/keyup", 10, &chatterCallbackUp);
-  ros::Subscriber keydown_sub = node_handle.subscribe("/keyboard/keydown", 10, &chatterCallbackDown);
+    ros::Subscriber keyup_sub = node_handle.subscribe("/keyboard/keyup", 10, &chatterCallbackUp);
+    ros::Subscriber keydown_sub = node_handle.subscribe("/keyboard/keydown", 10, &chatterCallbackDown);
 
-  spinner.start();
-	
-  double scale_x, scale_y, scale_z, scale_rot_x, scale_rot_y, scale_rot_z;
-  node_handle.param("/iiwa/pose_follower/scale_x", scale_x, 3.0);
-  node_handle.param("/iiwa/pose_follower/scale_y", scale_y, 3.0);
-  node_handle.param("/iiwa/pose_follower/scale_z", scale_z, 3.0);
-  node_handle.param("/iiwa/pose_follower/scale_rot_x", scale_rot_x, 0.3);
-  node_handle.param("/iiwa/pose_follower/scale_rot_y", scale_rot_y, 0.3);
-  node_handle.param("/iiwa/pose_follower/scale_rot_z", scale_rot_z, 0.3);
-  bool udp_input;
-  node_handle.param("/iiwa/pose_follower/udp", udp_input, false);
+    spinner.start();
 
-
-
-  pose_follower::PoseFollower pose_follower(&node_handle, "manipulator", "world", scale_x, scale_y, scale_z, scale_rot_x, scale_rot_y, scale_rot_z, 2);
+    double scale_x, scale_y, scale_z, scale_rot_x, scale_rot_y, scale_rot_z;
+    node_handle.param("/iiwa/pose_follower/scale_x", scale_x, 1.0);
+    node_handle.param("/iiwa/pose_follower/scale_y", scale_y, 1.0);
+    node_handle.param("/iiwa/pose_follower/scale_z", scale_z, 1.0);
+    node_handle.param("/iiwa/pose_follower/scale_rot_x", scale_rot_x, 1.0);
+    node_handle.param("/iiwa/pose_follower/scale_rot_y", scale_rot_y, 1.0);
+    node_handle.param("/iiwa/pose_follower/scale_rot_z", scale_rot_z, 1.0);
+    bool udp_input;
+    node_handle.param("/iiwa/pose_follower/udp", udp_input, false);
 
 
 
-	pose_follower.moveToInitialJointPositions();
-	pose_follower.setBasePoseToCurrent();
-
-  //pose_follower.waitForApproval();
-
-  if(udp_input) {
-    pose_follower.registerSubscriberRelative(std::string("/poseFromUDP/PoseStamped"));
-    ROS_INFO_NAMED("pose_follower", "Subscribed to pose from UDP!");
-  }
-  else {
-    pose_follower.registerSubscriberRelative(std::string("/poseFromFile/PoseStampedRelative"));
-    //pose_follower.registerSubscriberAbsolute(std::string("/poseFromFile/PoseStampedAbsolute"));
-    ROS_INFO_NAMED("pose_follower", "Subscribed to pose from file!");
-  }
+    pose_follower::PoseFollower pose_follower(&node_handle, "manipulator", "world", scale_x, scale_y, scale_z, scale_rot_x, scale_rot_y, scale_rot_z, 2);
 
 
-  bool declutch_lag = false;
 
-  declutch.data = false;
-  declutch_uplatch = false;
-  declutch_downlatch = false;
+    pose_follower.moveToInitialJointPositions();
+    pose_follower.setBasePoseToCurrent();
+    pose_follower.setTargetPoseToBase();
+    pose_follower.setScalingFactors(3, 3, 3, 0.2, 0.2, 0.2);
 
-  ros::Rate rate(30);
-  spinner.stop();
-  while(ros::ok()) {
-    ros::spinOnce();
-    if (declutch_lag-declutch.data == -1)declutch_uplatch = true;
-    if (declutch.data-declutch_lag == -1)declutch_downlatch = true;
-    declutch_lag = declutch.data;
+    //pose_follower.waitForApproval();
 
-    if(declutch_uplatch) std::cout<< "declutch_uplatch is true"<<std::endl;
-    if(declutch.data) std::cout<< "declutch is true"<<std::endl;
-    if(declutch_downlatch) std::cout<< "declutch_downlatch is true"<<std::endl;
-    
-    ros::spinOnce();
-    rate.sleep();
+    if(udp_input) {
+        pose_follower.registerSubscriberRelative(std::string("/poseFromUDP/PoseStamped"));
+        ROS_INFO_NAMED("pose_follower", "Subscribed to pose from UDP!");
+    }
+    else {
+        pose_follower.registerSubscriberRelative(std::string("/poseFromFile/PoseStampedRelative"));
+        //pose_follower.registerSubscriberAbsolute(std::string("/poseFromFile/PoseStampedAbsolute"));
+        ROS_INFO_NAMED("pose_follower", "Subscribed to pose from file!");
+    }
+
+
+    bool declutch_lag = false;
+
+    declutch.data = false;
     declutch_uplatch = false;
     declutch_downlatch = false;
-    
-  }
-  
-  ros::shutdown();
-  return 0;
+
+
+    ros::Rate rate(30);
+    spinner.stop();
+    while(ros::ok()) {
+        ros::spinOnce();
+        if (declutch_lag-declutch.data == -1)declutch_uplatch = true;
+        if (declutch.data-declutch_lag == -1)declutch_downlatch = true;
+        declutch_lag = declutch.data;
+        if(declutch_uplatch) std::cout<< "declutch_uplatch is true"<<std::endl;
+        if(declutch.data) std::cout<< "declutch is true"<<std::endl;
+        if(declutch_downlatch) std::cout<< "declutch_downlatch is true"<<std::endl;
+        //std::cout<< "Im in da while man"<<std::endl;
+        ros::spinOnce();
+        rate.sleep();
+        declutch_uplatch = false;
+        declutch_downlatch = false;
+
+    }
+
+    ros::shutdown();
+    return 0;
 }
