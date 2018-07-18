@@ -35,6 +35,7 @@
 /* Author: Marcus Ebner */
 #include <iimoveit/robot_interface.h>
 #include <tf/LinearMath/Quaternion.h>
+#include "tf/LinearMath/Transform.h"
 #include <tf/transform_broadcaster.h>
 #include <stdio.h>
 #include "std_msgs/Bool.h"
@@ -57,7 +58,7 @@ void chatterCallbackDown(const keyboard::Key& msg)
 }
 
 geometry_msgs::PoseStamped declutch_pose;
-geometry_msgs::PoseStamped debug_pose;
+//geometry_msgs::PoseStamped debug_pose;
 //=======================================================================
 
 
@@ -196,6 +197,8 @@ namespace pose_follower {
         geometry_msgs::PoseStamped omega_pose_relative;
         geometry_msgs::PoseStamped omega_pose_old;
         double euler_x, euler_y, euler_z;
+        //new euler variables for adjusting the coordinate frame of omega to the endeffector frame
+        double euler_x_new, euler_y_new, euler_z_new;
         //tf::Quaternion omega_old_quaternion;
         //tf::Quaternion omega_new_quaternion;
         //tf::Quaternion target_quaternion;
@@ -242,14 +245,14 @@ namespace pose_follower {
             //rotational part
             tf::Quaternion omega_old_quaternion(omega_pose_old.pose.orientation.x, omega_pose_old.pose.orientation.y, omega_pose_old.pose.orientation.z, omega_pose_old.pose.orientation.w);
             tf::Quaternion omega_new_quaternion(omega_pose_new.pose.orientation.x, omega_pose_new.pose.orientation.y, omega_pose_new.pose.orientation.z, omega_pose_new.pose.orientation.w);
-            std::cout << "x of omega old quaternion is " << omega_old_quaternion.getX() << std::endl;
-            std::cout << "x of omega new quaternion is " << omega_new_quaternion.getX() << std::endl;
+            //std::cout << "x of omega old quaternion is " << omega_old_quaternion.getX() << std::endl;
+            //std::cout << "x of omega new quaternion is " << omega_new_quaternion.getX() << std::endl;
 
             omega_old_inverse_quaternion = inverse(omega_old_quaternion);
-            std::cout << "x of omega old quaternion inverse is " << omega_old_inverse_quaternion.getX() << std::endl;
+            //std::cout << "x of omega old quaternion inverse is " << omega_old_inverse_quaternion.getX() << std::endl;
 
             relative_quaternion = omega_old_inverse_quaternion * omega_new_quaternion;
-            std::cout << "x of relative quaternion is " << relative_quaternion.getX() << std::endl;
+            //std::cout << "x of relative quaternion is " << relative_quaternion.getX() << std::endl;
 
             /*
             omega_pose_relative.pose.orientation.x = relative_quaternion.getX();
@@ -266,7 +269,7 @@ namespace pose_follower {
             omega_pose_old.pose.position.y = omega_pose_new.pose.position.y;
             omega_pose_old.pose.position.z = omega_pose_new.pose.position.z;*/
             omega_pose_old = omega_pose_new;
-            std::cout << "omega pose old position x is " << omega_pose_old.pose.position.x << std::endl;
+            //std::cout << "omega pose old position x is " << omega_pose_old.pose.position.x << std::endl;
 
 
             //std::cout<< "Immina Callback2"<<std::endl;
@@ -286,20 +289,20 @@ namespace pose_follower {
 
             tf::Matrix3x3 rotMatrix(relative_quaternion);
             rotMatrix.getEulerYPR(euler_z, euler_y, euler_x);
-            std::cout << "euler_x is " << euler_x << std::endl;
-            euler_x *= scale_rot_x_;
-            euler_y *= scale_rot_y_;
-            euler_z *= scale_rot_z_;
-            std::cout << "euler_x is " << euler_x << std::endl;
+            //std::cout << "euler_x is " << euler_x << std::endl;
+            euler_z_new = -euler_x * scale_rot_x_;
+            euler_y_new = -euler_y * scale_rot_y_;
+            euler_x_new = -euler_z * scale_rot_z_;
+            //std::cout << "euler_x is " << euler_x << std::endl;
             //std::cout << "scale rot x is " << scale_rot_x_ << std::endl;
-            rotMatrix.setEulerYPR(euler_z, euler_y, euler_x);
+            rotMatrix.setEulerYPR(euler_z_new, euler_y_new, euler_x_new);
             rotMatrix.getRotation(relative_quaternion_scaled);
             //==================================================================================
-            std::cout << "target pose orientation x before transform is " << target_pose.orientation.x << std::endl;
+            //std::cout << "target pose orientation x before transform is " << target_pose.orientation.x << std::endl;
 
 
             tf::Quaternion target_quaternion(target_pose.orientation.x, target_pose.orientation.y, target_pose.orientation.z, target_pose.orientation.w);
-            std::cout << "x of target quaternion is " << target_quaternion.getX() << std::endl;
+            //std::cout << "x of target quaternion is " << target_quaternion.getX() << std::endl;
             target_quaternion *= relative_quaternion_scaled;
 
             //std::cout<< " scaled x is "<< scaled_trans_x <<" scaled y is "<< scaled_trans_y <<" scaled z is "<< scaled_trans_z <<std::endl;
@@ -322,7 +325,7 @@ namespace pose_follower {
             if(declutch_downlatch) {
                 base_pose_ = target_pose;
                 first_time_ = true;
-                omega_pose_old = omega_pose_new;
+                //omega_pose_old = omega_pose_new;
 
              /*   omega_pose_old.pose.position.x = omega_pose_new.pose.position.x;
                 omega_pose_old.pose.position.y = omega_pose_new.pose.position.y;
