@@ -19,6 +19,7 @@ find_package(catkin REQUIRED COMPONENTS
   rosmsg
   iimoveit
   keyboard
+  tf
 )
 
 ## System dependencies are found with CMake's conventions

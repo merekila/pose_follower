@@ -20,6 +20,7 @@
   <build_depend>roscpp</build_depend>
   <build_depend>rosmsg</build_depend>
   <build_depend>iimoveit</build_depend>
+  <build_depend>tf</build_depend>
   <build_export_depend>control_msgs</build_export_depend>
   <build_export_depend>iiwa_description</build_export_depend>
   <build_export_depend>iiwa_moveit</build_export_depend>
@@ -30,6 +31,7 @@
   <build_export_depend>roscpp</build_export_depend>
   <build_export_depend>rosmsg</build_export_depend>
   <build_export_depend>iimoveit</build_export_depend>
+  <build_export_depend>tf</build_export_depend>
   <exec_depend>control_msgs</exec_depend>
   <exec_depend>iiwa_description</exec_depend>
   <exec_depend>iiwa_moveit</exec_depend>
@@ -40,6 +42,7 @@
   <exec_depend>roscpp</exec_depend>
   <exec_depend>rosmsg</exec_depend>
   <exec_depend>iimoveit</exec_depend>
+  <exec_depend>tf</exec_depend>
 
 
   <!-- The export tag contains other, unspecified, tags -->

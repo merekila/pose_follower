@@ -35,11 +35,16 @@
 /* Author: Marcus Ebner */
 #include <iimoveit/robot_interface.h>
 #include <tf/LinearMath/Quaternion.h>
-#include "tf/LinearMath/Transform.h"
+#include <tf/LinearMath/Transform.h>
 #include <tf/transform_broadcaster.h>
+#include <tf/transform_datatypes.h>
+#include <tf/tf.h>
 #include <stdio.h>
 #include "std_msgs/Bool.h"
 #include <keyboard/Key.h>
+//#include <Vector3.h>
+//#include <Transform.h>
+
 
 
 //Code for Clutching=====================================================
@@ -196,9 +201,15 @@ namespace pose_follower {
         geometry_msgs::PoseStamped omega_pose_new;
         geometry_msgs::PoseStamped omega_pose_relative;
         geometry_msgs::PoseStamped omega_pose_old;
+        tf::Pose omega_pose_new_p;
+        tf::Pose omega_pose_relative_p;
+        tf::Pose omega_pose_old_p;
+        tf::Pose target_pose_p;
+        tf::Vector3 scaled_trans;
         double euler_x, euler_y, euler_z;
         //new euler variables for adjusting the coordinate frame of omega to the endeffector frame
         double euler_x_new, euler_y_new, euler_z_new;
+        tfScalar trans_x_scaled, trans_y_scaled, trans_z_scaled;
         //tf::Quaternion omega_old_quaternion;
         //tf::Quaternion omega_new_quaternion;
         //tf::Quaternion target_quaternion;
@@ -239,19 +250,24 @@ namespace pose_follower {
             //ROS_INFO("omega new x is zero ", omega_pose_new.pose.position.x);
             //ROS_INFO("omega old x is ");
 
+            //convert geometry_msgs::Pose to tf::Pose
+            tf::poseMsgToTF(omega_pose_new.pose, omega_pose_new_p);
+            tf::poseMsgToTF(omega_pose_old.pose, omega_pose_old_p);
+
             //calculate omega_pose_relative ====================================================
             //translational part
-            calculateRelativePose(omega_pose_old, omega_pose_new, omega_pose_relative);
+            //calculateRelativePose(omega_pose_old, omega_pose_new, omega_pose_relative);
+
             //rotational part
-            tf::Quaternion omega_old_quaternion(omega_pose_old.pose.orientation.x, omega_pose_old.pose.orientation.y, omega_pose_old.pose.orientation.z, omega_pose_old.pose.orientation.w);
-            tf::Quaternion omega_new_quaternion(omega_pose_new.pose.orientation.x, omega_pose_new.pose.orientation.y, omega_pose_new.pose.orientation.z, omega_pose_new.pose.orientation.w);
+            //tf::Quaternion omega_old_quaternion(omega_pose_old.pose.orientation.x, omega_pose_old.pose.orientation.y, omega_pose_old.pose.orientation.z, omega_pose_old.pose.orientation.w);
+            //tf::Quaternion omega_new_quaternion(omega_pose_new.pose.orientation.x, omega_pose_new.pose.orientation.y, omega_pose_new.pose.orientation.z, omega_pose_new.pose.orientation.w);
             //std::cout << "x of omega old quaternion is " << omega_old_quaternion.getX() << std::endl;
             //std::cout << "x of omega new quaternion is " << omega_new_quaternion.getX() << std::endl;
 
-            omega_old_inverse_quaternion = inverse(omega_old_quaternion);
+            //omega_old_inverse_quaternion = inverse(omega_old_quaternion);
             //std::cout << "x of omega old quaternion inverse is " << omega_old_inverse_quaternion.getX() << std::endl;
 
-            relative_quaternion = omega_old_inverse_quaternion * omega_new_quaternion;
+            omega_pose_relative_p = omega_pose_old_p.inverse() * omega_pose_new_p;
             //std::cout << "x of relative quaternion is " << relative_quaternion.getX() << std::endl;
 
             /*
@@ -279,14 +295,26 @@ namespace pose_follower {
 
 
             //scale the translational part
-            scaled_trans_x = omega_pose_relative.pose.position.x * scale_x_;
+/*            scaled_trans_x = omega_pose_relative.pose.position.x * scale_x_;
             scaled_trans_y = omega_pose_relative.pose.position.y * scale_y_;
-            scaled_trans_z = omega_pose_relative.pose.position.z * scale_z_;
+            scaled_trans_z = omega_pose_relative.pose.position.z * scale_z_;*/
+
+            scaled_trans = omega_pose_relative_p.getOrigin();
+            trans_x_scaled = scaled_trans.getY() * -1 *scale_y_;
+            trans_y_scaled = scaled_trans.getZ() * scale_z_;
+            trans_z_scaled = scaled_trans.getX() * -1 *scale_x_;
+            //scaled_trans = setValue(trans_x_scaled, trans_y_scaled, trans_z_scaled);
+            scaled_trans.setX(trans_x_scaled);
+            scaled_trans.setY(trans_y_scaled);
+            scaled_trans.setZ(trans_z_scaled);
+            omega_pose_relative_p.setOrigin(scaled_trans);
+
             //std::cout << "scaled_trans_x is " << scaled_trans_x << std::endl;
 
             //scale the rotational part
             //std::cout << "x of relative quaternion is " << relative_quaternion.getX() << std::endl;
 
+            relative_quaternion = omega_pose_relative_p.getRotation();
             tf::Matrix3x3 rotMatrix(relative_quaternion);
             rotMatrix.getEulerYPR(euler_z, euler_y, euler_x);
             //std::cout << "euler_x is " << euler_x << std::endl;
@@ -297,14 +325,19 @@ namespace pose_follower {
             //std::cout << "scale rot x is " << scale_rot_x_ << std::endl;
             rotMatrix.setEulerYPR(euler_z_new, euler_y_new, euler_x_new);
             rotMatrix.getRotation(relative_quaternion_scaled);
+            omega_pose_relative_p.setRotation(relative_quaternion_scaled);
             //==================================================================================
             //std::cout << "target pose orientation x before transform is " << target_pose.orientation.x << std::endl;
 
+            tf::poseMsgToTF(target_pose, target_pose_p);
 
-            tf::Quaternion target_quaternion(target_pose.orientation.x, target_pose.orientation.y, target_pose.orientation.z, target_pose.orientation.w);
+            target_pose_p *= omega_pose_relative_p;
+
+            tf::poseTFToMsg(target_pose_p, target_pose);
+            //tf::Quaternion target_quaternion(target_pose.orientation.x, target_pose.orientation.y, target_pose.orientation.z, target_pose.orientation.w);
             //std::cout << "x of target quaternion is " << target_quaternion.getX() << std::endl;
-            target_quaternion *= relative_quaternion_scaled;
-
+            //target_quaternion *= relative_quaternion_scaled;
+/*
             //std::cout<< " scaled x is "<< scaled_trans_x <<" scaled y is "<< scaled_trans_y <<" scaled z is "<< scaled_trans_z <<std::endl;
             //Add relative pose to the last target
             target_pose.position.x += scaled_trans_x;
@@ -318,7 +351,7 @@ namespace pose_follower {
             std::cout << "target pose orientation x is " << target_pose.orientation.x << std::endl;
             //std::cout << "target pose pose x is " << target_pose.position.x << std::endl;
             //base_pose_.orientation = target_pose.orientation;
-            //omega_pose_old.pose = target_pose;
+            //omega_pose_old.pose = target_pose;*/
 
 
             //Clutching Algorithm=====================================================
@@ -384,7 +417,7 @@ int main(int argc, char **argv)
     pose_follower.moveToInitialJointPositions();
     pose_follower.setBasePoseToCurrent();
     pose_follower.setTargetPoseToBase();
-    pose_follower.setScalingFactors(3, 3, 3, 0.2, 0.2, 0.2);
+    pose_follower.setScalingFactors(5, 5, 5, 0.1, 0.1, 0.1);
 
     //pose_follower.waitForApproval();
 
