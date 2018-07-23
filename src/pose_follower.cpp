@@ -51,6 +51,7 @@
 std_msgs::Bool declutch;
 bool declutch_uplatch;
 bool declutch_downlatch;
+bool declutch_status;
 
 void chatterCallbackUp(const keyboard::Key& msg)
 {
@@ -148,6 +149,7 @@ namespace pose_follower {
         void setTargetPoseToBase() {
             std::cout<<"setTargetPoseToBase"<<std::endl;
             target_pose = base_pose_;
+            declutch_pose.pose = base_pose_;
             //omega_pose_old.pose =
 
         }
@@ -237,6 +239,7 @@ namespace pose_follower {
             
             if(first_time_) {
                 omega_pose_old = omega_pose_new;
+                //target_pose = declutch_pose.pose;
                 first_time_ = false;
             }
 
@@ -247,22 +250,22 @@ namespace pose_follower {
             }*/
             //ROS_INFO("omega old x is ");
 
-            //convert geometry_msgs::Pose to tf::Pose for following calculations
-            tf::poseMsgToTF(omega_pose_new.pose, omega_pose_new_p);
-            tf::poseMsgToTF(omega_pose_old.pose, omega_pose_old_p);
+            //convert geometry_msgs::Pose to tf::Pose for following calculations================
+            tf::poseMsgToTF(omega_pose_new.pose, omega_pose_new_p);                           // 
+            tf::poseMsgToTF(omega_pose_old.pose, omega_pose_old_p);                           //
+            //==================================================================================  
 
 
             //calculate omega_pose_relative ====================================================
-            omega_pose_relative_p = omega_pose_old_p.inverse() * omega_pose_new_p;
+            omega_pose_relative_p = omega_pose_old_p.inverse() * omega_pose_new_p;            //
             //==================================================================================
 
 
 
             //initialise omega_pose_old for the next iteration==================================
-            /*omega_pose_old.pose.position.x = omega_pose_new.pose.position.x;
-            omega_pose_old.pose.position.y = omega_pose_new.pose.position.y;
-            omega_pose_old.pose.position.z = omega_pose_new.pose.position.z;*/
-            omega_pose_old = omega_pose_new;
+            omega_pose_old = omega_pose_new;                                                  //
+            //==================================================================================
+
 
             //scale omega_pose_relative ========================================================
 
@@ -280,13 +283,9 @@ namespace pose_follower {
             relative_quaternion = omega_pose_relative_p.getRotation();
             tf::Matrix3x3 rotMatrix(relative_quaternion);
             rotMatrix.getEulerYPR(euler_z, euler_y, euler_x);
-            std::cout << "euler_z is " << euler_x << std::endl;
             euler_z_new = -euler_x * scale_rot_x_;
             euler_y_new = -euler_y * scale_rot_y_;
             euler_x_new = -euler_z * scale_rot_z_;
-            std::cout << "euler_x scalefactor is " << scale_rot_x_ << std::endl;
-            std::cout << "euler_z_new scaled is " << euler_z_new << std::endl;
-
             //std::cout << "scale rot x is " << scale_rot_x_ << std::endl;
             rotMatrix.setEulerYPR(euler_z_new, euler_y_new, euler_x_new);
             rotMatrix.getRotation(relative_quaternion_scaled);
@@ -307,22 +306,35 @@ namespace pose_follower {
             //target_quaternion *= relative_quaternion_scaled;
             //std::cout<< " scaled x is "<< scaled_trans_x <<" scaled y is "<< scaled_trans_y <<" scaled z is "<< scaled_trans_z <<std::endl;
             //std::cout << "target pose orientation x is " << target_pose.orientation.x << std::endl;
-      
+            
 
 
             //Clutching Algorithm=====================================================
             if(declutch_downlatch) {
-                base_pose_ = target_pose;
+                //target_pose = declutch_pose.pose;
                 first_time_ = true;
-                //omega_pose_old = omega_pose_new;
+                target_pose = declutch_pose.pose;
+                declutch_downlatch = false;
+                declutch_status = false;
 
              /*   omega_pose_old.pose.position.x = omega_pose_new.pose.position.x;
                 omega_pose_old.pose.position.y = omega_pose_new.pose.position.y;
                 omega_pose_old.pose.position.z = omega_pose_new.pose.position.z;*/
             }
-            if(declutch_uplatch) declutch_pose.pose = target_pose;
-            if(declutch.data) publishPoseGoal(declutch_pose, 0.01);
-            if(!declutch.data) publishPoseGoal(target_pose, 0.01);
+
+            if(declutch_uplatch){
+                declutch_pose.pose = target_pose;
+               std::cout<< "Callback CAllback Calllback declutch_uplatch is true"<<std::endl;
+               declutch_uplatch = false;
+               declutch_status = true;
+            } 
+
+
+            if(declutch_status) {
+                publishPoseGoal(declutch_pose, 0.01);
+                //std::cout<< "declutch pose publish"<< std::endl;
+            }
+            if(!declutch_status) publishPoseGoal(target_pose, 0.01);
             //========================================================================
 
         }
@@ -340,8 +352,8 @@ int main(int argc, char **argv)
     ros::AsyncSpinner spinner(1);
     ros::Publisher pose_publisher = node_handle.advertise<geometry_msgs::PoseStamped>("getPoseDebug", 1);
 
-    ros::Subscriber keyup_sub = node_handle.subscribe("/keyboard/keyup", 10, &chatterCallbackUp);
-    ros::Subscriber keydown_sub = node_handle.subscribe("/keyboard/keydown", 10, &chatterCallbackDown);
+    ros::Subscriber keyup_sub = node_handle.subscribe("/keyboard/keyup", 1, &chatterCallbackUp);
+    ros::Subscriber keydown_sub = node_handle.subscribe("/keyboard/keydown", 1, &chatterCallbackDown);
 
     spinner.start();
 
@@ -359,14 +371,14 @@ int main(int argc, char **argv)
 
     pose_follower::PoseFollower pose_follower(&node_handle, "manipulator", "world", scale_x, scale_y, scale_z, scale_rot_x, scale_rot_y, scale_rot_z, 2);
 
+    pose_follower.setScalingFactors(3, 3, 3, 0.05, 0.05, 0.05);
+    //pose_follower.waitForApproval();
 
-
-    //pose_follower.moveToInitialJointPositions();
+    pose_follower.moveToInitialJointPositions();
     pose_follower.setBasePoseToCurrent();
     pose_follower.setTargetPoseToBase();
-    pose_follower.setScalingFactors(3, 3, 3, 0.05, 0.05, 0.05);
 
-    pose_follower.waitForApproval();
+   
 
     if(udp_input) {
         pose_follower.registerSubscriberRelative(std::string("/poseFromUDP/PoseStamped"));
@@ -384,25 +396,28 @@ int main(int argc, char **argv)
     declutch.data = false;
     declutch_uplatch = false;
     declutch_downlatch = false;
+    declutch_status = false;
 
-
-    ros::Rate rate(30);
     spinner.stop();
+    ros::Rate rate(30);
+
     while(ros::ok()) {
         ros::spinOnce();
         if (declutch_lag-declutch.data == -1)declutch_uplatch = true;
         if (declutch.data-declutch_lag == -1)declutch_downlatch = true;
         declutch_lag = declutch.data;
+        //ros::spinOnce();        
         if(declutch_uplatch) std::cout<< "declutch_uplatch is true"<<std::endl;
-        if(declutch.data) std::cout<< "declutch is true"<<std::endl;
+        if(declutch_status) std::cout<< "declutch is true"<<std::endl;
         if(declutch_downlatch) std::cout<< "declutch_downlatch is true"<<std::endl;
         //std::cout<< "Im in da while man"<<std::endl;
-        ros::spinOnce();
+        
         rate.sleep();
-        declutch_uplatch = false;
-        declutch_downlatch = false;
+        //declutch_uplatch = false;
+        //declutch_downlatch = false;
 
     }
+    //spinner.stop();
 
     ros::shutdown();
     return 0;
