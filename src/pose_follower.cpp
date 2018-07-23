@@ -203,10 +203,13 @@ namespace pose_follower {
         geometry_msgs::PoseStamped omega_pose_new;
         geometry_msgs::PoseStamped omega_pose_relative;
         geometry_msgs::PoseStamped omega_pose_old;
+        geometry_msgs::PoseStamped omega_calibpose;
         tf::Pose omega_pose_new_p;
         tf::Pose omega_pose_relative_p;
         tf::Pose omega_pose_old_p;
         tf::Pose target_pose_p;
+        tf::Pose base_pose_p;
+        tf::Pose omega_calibpose_p;
         tf::Vector3 scaled_trans;
         double euler_x, euler_y, euler_z;
         //new euler variables for adjusting the coordinate frame of omega to the endeffector frame
@@ -222,24 +225,19 @@ namespace pose_follower {
         geometry_msgs::Pose target_pose;
         //initialize the scaling factors
 
-        /*    scale_rot_x_ = 0.2;
-        scale_rot_y_ = 0.2;
-        scale_rot_z_ = 0.2;
-        scale_x_ = 3;
-        scale_y_ = 3;
-        scale_z_ = 3;*/
 
-        double scaled_trans_x;
-        double scaled_trans_y;
-        double scaled_trans_z;
 
         void poseCallbackRelative(const geometry_msgs::PoseStamped::ConstPtr& msg) {
 
             omega_pose_new = transformOperatorPose(*msg); //Why??? Why not omega_pose_new = msg ?
             
             if(first_time_) {
-                omega_pose_old = omega_pose_new;
+                base_pose_ = target_pose;
+                tf::poseMsgToTF(base_pose_, base_pose_p);
+                omega_calibpose = omega_pose_new;
+                tf::poseMsgToTF(omega_calibpose.pose, omega_calibpose_p);
                 //target_pose = declutch_pose.pose;
+                std::cout<< "first time executed"<< std::endl;
                 first_time_ = false;
             }
 
@@ -252,51 +250,55 @@ namespace pose_follower {
 
             //convert geometry_msgs::Pose to tf::Pose for following calculations================
             tf::poseMsgToTF(omega_pose_new.pose, omega_pose_new_p);                           // 
-            tf::poseMsgToTF(omega_pose_old.pose, omega_pose_old_p);                           //
+            //tf::poseMsgToTF(omega_pose_old.pose, omega_pose_old_p);                           //
             //==================================================================================  
+            std::cout<<"x of omega new is "<< omega_pose_new_p.getOrigin().getX()<<std::endl;
+            std::cout<<"x of inverse of calib is "<< omega_calibpose_p.getOrigin().getX()<<std::endl;
+
 
 
             //calculate omega_pose_relative ====================================================
-            omega_pose_relative_p = omega_pose_old_p.inverse() * omega_pose_new_p;            //
+            omega_pose_relative_p = omega_pose_new_p * omega_calibpose_p.inverse();            //
             //==================================================================================
+            std::cout<<"x of omega relative is "<< omega_pose_relative_p.getOrigin().getX()<<std::endl;
 
 
 
             //initialise omega_pose_old for the next iteration==================================
-            omega_pose_old = omega_pose_new;                                                  //
+            //omega_pose_old = omega_pose_new;                                                  //
             //==================================================================================
+            std::cout<<"x before scale is "<< omega_pose_relative_p.getOrigin().getX()<<std::endl;
 
-
+            
             //scale omega_pose_relative ========================================================
-
             //scale the translational part
             scaled_trans = omega_pose_relative_p.getOrigin();
-            trans_x_scaled = scaled_trans.getY() * -1 *scale_y_;
-            trans_y_scaled = scaled_trans.getZ() * scale_z_;
-            trans_z_scaled = scaled_trans.getX() * -1 *scale_x_;
+            std::cout<< "x ist "<< scaled_trans.getX() << std::endl;
+            trans_y_scaled = scaled_trans.getY() * scale_y_;
+            trans_z_scaled = scaled_trans.getZ() * scale_z_;
+            trans_x_scaled = scaled_trans.getX() * scale_x_;
+            //std::cout<< "x nachher "<< trans_x_scaled << std::endl;
             scaled_trans.setX(trans_x_scaled);
             scaled_trans.setY(trans_y_scaled);
             scaled_trans.setZ(trans_z_scaled);
             omega_pose_relative_p.setOrigin(scaled_trans);
-
             //scale the rotational part
             relative_quaternion = omega_pose_relative_p.getRotation();
             tf::Matrix3x3 rotMatrix(relative_quaternion);
             rotMatrix.getEulerYPR(euler_z, euler_y, euler_x);
-            euler_z_new = -euler_x * scale_rot_x_;
-            euler_y_new = -euler_y * scale_rot_y_;
-            euler_x_new = -euler_z * scale_rot_z_;
-            //std::cout << "scale rot x is " << scale_rot_x_ << std::endl;
+            euler_x_new = euler_x * scale_rot_x_;
+            euler_y_new = euler_y * scale_rot_y_;
+            euler_z_new = euler_z * scale_rot_z_;
             rotMatrix.setEulerYPR(euler_z_new, euler_y_new, euler_x_new);
             rotMatrix.getRotation(relative_quaternion_scaled);
             omega_pose_relative_p.setRotation(relative_quaternion_scaled);
             //==================================================================================
+            std::cout<<"x after scale is "<< omega_pose_relative_p.getOrigin().getX()<<std::endl;
 
-            
             //Transformation of target pose=====================================================
             //conversion to TF necessary for transformation
             tf::poseMsgToTF(target_pose, target_pose_p);
-            target_pose_p *= omega_pose_relative_p;
+            target_pose_p = base_pose_p * omega_pose_relative_p;
             tf::poseTFToMsg(target_pose_p, target_pose);
             //==================================================================================
 
@@ -304,7 +306,6 @@ namespace pose_follower {
             //tf::Quaternion target_quaternion(target_pose.orientation.x, target_pose.orientation.y, target_pose.orientation.z, target_pose.orientation.w);
             //std::cout << "x of target quaternion is " << target_quaternion.getX() << std::endl;
             //target_quaternion *= relative_quaternion_scaled;
-            //std::cout<< " scaled x is "<< scaled_trans_x <<" scaled y is "<< scaled_trans_y <<" scaled z is "<< scaled_trans_z <<std::endl;
             //std::cout << "target pose orientation x is " << target_pose.orientation.x << std::endl;
             
 
@@ -316,10 +317,6 @@ namespace pose_follower {
                 target_pose = declutch_pose.pose;
                 declutch_downlatch = false;
                 declutch_status = false;
-
-             /*   omega_pose_old.pose.position.x = omega_pose_new.pose.position.x;
-                omega_pose_old.pose.position.y = omega_pose_new.pose.position.y;
-                omega_pose_old.pose.position.z = omega_pose_new.pose.position.z;*/
             }
 
             if(declutch_uplatch){
@@ -328,12 +325,8 @@ namespace pose_follower {
                declutch_uplatch = false;
                declutch_status = true;
             } 
-
-
-            if(declutch_status) {
-                publishPoseGoal(declutch_pose, 0.01);
-                //std::cout<< "declutch pose publish"<< std::endl;
-            }
+            if(declutch_status)publishPoseGoal(declutch_pose, 0.01);
+            
             if(!declutch_status) publishPoseGoal(target_pose, 0.01);
             //========================================================================
 
@@ -371,7 +364,7 @@ int main(int argc, char **argv)
 
     pose_follower::PoseFollower pose_follower(&node_handle, "manipulator", "world", scale_x, scale_y, scale_z, scale_rot_x, scale_rot_y, scale_rot_z, 2);
 
-    pose_follower.setScalingFactors(3, 3, 3, 0.05, 0.05, 0.05);
+    pose_follower.setScalingFactors(1, 1, 1, 0.05, 0.05, 0.05);
     //pose_follower.waitForApproval();
 
     pose_follower.moveToInitialJointPositions();
