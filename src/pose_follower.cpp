@@ -214,13 +214,18 @@ namespace pose_follower {
         double euler_x, euler_y, euler_z;
         //new euler variables for adjusting the coordinate frame of omega to the endeffector frame
         double euler_x_new, euler_y_new, euler_z_new;
+        double calib_factor_x, calib_factor_y, calib_factor_z;
+        double x, y, z;
         tfScalar trans_x_scaled, trans_y_scaled, trans_z_scaled;
         //tf::Quaternion omega_old_quaternion;
-        //tf::Quaternion omega_new_quaternion;
+        tf::Quaternion omega_new_quaternion;
         //tf::Quaternion target_quaternion;
         tf::Quaternion relative_quaternion;
         tf::Quaternion relative_quaternion_scaled;
         tf::Quaternion omega_old_inverse_quaternion;
+        tf::Quaternion calib_quaternion;
+        tf::Quaternion target_quaternion;
+        tf::Quaternion inverse_calib_quaternion;
 
         geometry_msgs::Pose target_pose;
         //initialize the scaling factors
@@ -234,12 +239,35 @@ namespace pose_follower {
             if(first_time_) {
                 base_pose_ = target_pose;
                 tf::poseMsgToTF(base_pose_, base_pose_p);
-                omega_calibpose = omega_pose_new;
-                tf::poseMsgToTF(omega_calibpose.pose, omega_calibpose_p);
+                //handle the rotation and translation seperately in calibration
+                //translation
+                calib_factor_x = omega_pose_new.pose.position.x;
+                calib_factor_y = omega_pose_new.pose.position.y;
+                calib_factor_z = omega_pose_new.pose.position.z;
+                //rotation
+                calib_quaternion.setX(omega_pose_new.pose.orientation.x);
+                calib_quaternion.setY(omega_pose_new.pose.orientation.y);
+                calib_quaternion.setZ(omega_pose_new.pose.orientation.z);
+                calib_quaternion.setW(omega_pose_new.pose.orientation.w);
+                inverse_calib_quaternion = inverse(calib_quaternion);
+                //omega_calibpose = omega_pose_new;
+                //tf::poseMsgToTF(omega_calibpose.pose, omega_calibpose_p);
+
                 //target_pose = declutch_pose.pose;
                 std::cout<< "first time executed"<< std::endl;
                 first_time_ = false;
             }
+
+            x = omega_pose_new.pose.position.x;
+            y = omega_pose_new.pose.position.y;
+            z = omega_pose_new.pose.position.z;
+
+            omega_new_quaternion.setX(omega_pose_new.pose.orientation.x);
+            omega_new_quaternion.setY(omega_pose_new.pose.orientation.y);
+            omega_new_quaternion.setZ(omega_pose_new.pose.orientation.z);
+            omega_new_quaternion.setW(omega_pose_new.pose.orientation.w);
+
+            //std::cout<< "x of omega_new_quaternion is "<< omega_new_quaternion.getX()<<std::endl;
 
             //std::cout<< "Immina Callback1"<<std::endl;
             /*if (first_time_){
@@ -249,27 +277,29 @@ namespace pose_follower {
             //ROS_INFO("omega old x is ");
 
             //convert geometry_msgs::Pose to tf::Pose for following calculations================
-            tf::poseMsgToTF(omega_pose_new.pose, omega_pose_new_p);                           // 
-            //tf::poseMsgToTF(omega_pose_old.pose, omega_pose_old_p);                           //
+            //tf::poseMsgToTF(omega_pose_new.pose, omega_pose_new_p);                           // 
+            //tf::poseMsgToTF(omega_pose_old.pose, omega_pose_old_p);                         //
             //==================================================================================  
-            std::cout<<"x of omega new is "<< omega_pose_new_p.getOrigin().getX()<<std::endl;
-            std::cout<<"x of inverse of calib is "<< omega_calibpose_p.getOrigin().getX()<<std::endl;
+            //std::cout<<"x of omega new is "<< omega_pose_new_p.getOrigin().getX()<<std::endl;
+            //std::cout<<"x of inverse of calib is "<< omega_calibpose_p.getOrigin().getX()<<std::endl;
 
 
 
             //calculate omega_pose_relative ====================================================
-            omega_pose_relative_p = omega_pose_new_p * omega_calibpose_p.inverse();            //
+            //omega_pose_relative_p = omega_pose_new_p * omega_calibpose_p.inverse();            //
+
+
             //==================================================================================
-            std::cout<<"x of omega relative is "<< omega_pose_relative_p.getOrigin().getX()<<std::endl;
+            //std::cout<<"x of omega relative is "<< omega_pose_relative_p.getOrigin().getX()<<std::endl;
 
 
 
             //initialise omega_pose_old for the next iteration==================================
             //omega_pose_old = omega_pose_new;                                                  //
             //==================================================================================
-            std::cout<<"x before scale is "<< omega_pose_relative_p.getOrigin().getX()<<std::endl;
+            //std::cout<<"x before scale is "<< omega_pose_relative_p.getOrigin().getX()<<std::endl;
 
-            
+            /*
             //scale omega_pose_relative ========================================================
             //scale the translational part
             scaled_trans = omega_pose_relative_p.getOrigin();
@@ -294,12 +324,28 @@ namespace pose_follower {
             omega_pose_relative_p.setRotation(relative_quaternion_scaled);
             //==================================================================================
             std::cout<<"x after scale is "<< omega_pose_relative_p.getOrigin().getX()<<std::endl;
-
+*/
             //Transformation of target pose=====================================================
             //conversion to TF necessary for transformation
-            tf::poseMsgToTF(target_pose, target_pose_p);
+          /*  tf::poseMsgToTF(target_pose, target_pose_p);
             target_pose_p = base_pose_p * omega_pose_relative_p;
             tf::poseTFToMsg(target_pose_p, target_pose);
+            */
+            //only quaternion
+            target_quaternion = omega_new_quaternion * inverse_calib_quaternion;
+            std::cout<< "x of target_quaternion is "<< target_quaternion.getX()<<std::endl;
+            
+            
+            //Second method for transformation
+            target_pose.position.x += (x - calib_factor_x);
+            target_pose.position.y += (y - calib_factor_y);
+            target_pose.position.z += (z - calib_factor_z);
+            target_pose.orientation.x = target_quaternion.getX();
+            target_pose.orientation.y = target_quaternion.getY();
+            target_pose.orientation.z = target_quaternion.getZ();
+            target_pose.orientation.w = target_quaternion.getW();
+            std::cout<< "orientation x of target_pose is "<< target_pose.orientation.x << std::endl;
+            std::cout<< "position x of target_pose is "<< target_pose.position.x << std::endl;
             //==================================================================================
 
             
@@ -320,7 +366,7 @@ namespace pose_follower {
             }
 
             if(declutch_uplatch){
-                declutch_pose.pose = target_pose;
+               declutch_pose.pose = target_pose;
                std::cout<< "Callback CAllback Calllback declutch_uplatch is true"<<std::endl;
                declutch_uplatch = false;
                declutch_status = true;
